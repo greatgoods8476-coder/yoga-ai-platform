@@ -3,21 +3,27 @@ const ROUTINE_TYPES = require('../data/routineTypes');
 
 const DIFFICULTY_RANK = { beginner: 0, intermediate: 1, advanced: 2 };
 
+// Values here are matched against a pose's `category` (position family) OR
+// its `focus_tags` (cross-cutting functional labels) — see tagMatches().
 const GOAL_CATEGORY_MAP = {
-  flexibility: ['hamstring', 'seated', 'standing'],
-  mobility: ['mobility', 'hip_opener', 'office_stretch'],
-  pain_reduction: ['restorative', 'office_stretch'],
-  stress_reduction: ['restorative', 'breathwork'],
-  posture: ['backbend', 'standing', 'office_stretch'],
+  flexibility: ['hamstring', 'hip_opener', 'chest_opener', 'shoulder_opener'],
+  mobility: ['hip_opener', 'shoulder_opener', 'spine_mobility'],
+  pain_reduction: ['restorative', 'office_friendly'],
+  stress_reduction: ['restorative', 'calming', 'breathwork'],
+  posture: ['backbend', 'chest_opener', 'office_friendly', 'posture'],
   balance: ['balance'],
   recovery: ['restorative', 'hamstring'],
   breathing: ['breathwork'],
-  mindfulness: ['breathwork', 'restorative'],
-  sleep: ['restorative', 'breathwork'],
-  strength: ['strength'],
-  body_awareness: ['balance', 'standing'],
+  mindfulness: ['calming', 'restorative', 'breathwork'],
+  sleep: ['restorative', 'sleep', 'calming'],
+  strength: ['strength', 'core', 'arm_balance'],
+  body_awareness: ['balance'],
   habit_building: [],
 };
+
+function tagMatches(pose, tags) {
+  return tags.some((t) => t === pose.category || (pose.focus_tags || []).includes(t));
+}
 
 const JOINT_PAIN_TAGS = ['back', 'neck', 'hip', 'knee'];
 const JOINT_PAIN_SEVERITY_THRESHOLD = 3;
@@ -55,11 +61,11 @@ function isSafeForProfile(pose, profile) {
   }
 
   if (profile.pregnancy_status === 'pregnant') {
-    const gentleCategories = ['breathwork', 'restorative', 'office_stretch', 'senior_friendly', 'prenatal_safe'];
-    const isPrenatalStyled = (pose.styles || []).includes('prenatal');
-    const isGentle = gentleCategories.includes(pose.category);
-    const isRiskyCategory = ['strength', 'backbend', 'balance'].includes(pose.category);
-    if (!isPrenatalStyled && (!isGentle || isRiskyCategory)) return false;
+    const isPrenatalOverride = (pose.styles || []).includes('prenatal') || (pose.focus_tags || []).includes('prenatal_safe');
+    const isGentle = ['breathwork', 'restorative', 'seated', 'tabletop'].includes(pose.category);
+    const isRisky = ['arm_balance', 'inversion', 'backbend', 'balance'].includes(pose.category)
+      || (pose.focus_tags || []).includes('backbend') || (pose.focus_tags || []).includes('twist');
+    if (!isPrenatalOverride && (!isGentle || isRisky)) return false;
   }
 
   const equipment = profile.available_equipment || [];
@@ -79,10 +85,10 @@ function isSafeForProfile(pose, profile) {
 function scorePose(pose, profile, routineType, dateStamp) {
   let score = 0;
 
-  if ((routineType.categories || []).includes(pose.category)) score += 3;
+  if (tagMatches(pose, routineType.categories || [])) score += 3;
 
   for (const goal of profile.goals || []) {
-    if ((GOAL_CATEGORY_MAP[goal] || []).includes(pose.category)) score += 2;
+    if (tagMatches(pose, GOAL_CATEGORY_MAP[goal] || [])) score += 2;
   }
 
   const favoredStyles = new Set([...(profile.favorite_yoga_styles || []), ...(routineType.stylesBias || [])]);

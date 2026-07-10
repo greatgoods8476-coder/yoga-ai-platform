@@ -52,8 +52,8 @@ async function recordSessionCompletion({ userId, workoutMinutes, completionPct, 
     strength_score: deltas.strength_score !== undefined ? ema(existing?.strength_score, deltas.strength_score) : existing?.strength_score ?? null,
     mood_score: deltas.mood_score !== undefined ? ema(existing?.mood_score, deltas.mood_score) : existing?.mood_score ?? null,
     stress_score: deltas.stress_score !== undefined ? ema(existing?.stress_score, deltas.stress_score) : existing?.stress_score ?? null,
-    workout_minutes: (existing?.workout_minutes || 0) + workoutMinutes,
-    meditation_minutes: existing?.meditation_minutes || 0,
+    workout_minutes: Number(existing?.workout_minutes || 0) + workoutMinutes,
+    meditation_minutes: Number(existing?.meditation_minutes || 0),
     streak_days: streak,
   };
 

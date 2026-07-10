@@ -56,6 +56,34 @@ test('sessions: repeated skips of the same pose eventually mark it avoided', asy
   assert.ok(lastState.avoidedPoses.includes(skippedPoseId), 'pose skipped 3 times in a row should be marked avoided');
 });
 
+test('sessions: workout minutes accumulate numerically across same-day completions', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { signup, routine } = await setupUserWithRoutine(server.baseUrl);
+
+  let lastWorkoutMinutes = 0;
+  for (let i = 0; i < 2; i += 1) {
+    const started = await call(server.baseUrl, 'POST', '/sessions', { token: signup.token, body: { routineId: routine.routine.id } });
+    await call(server.baseUrl, 'POST', `/sessions/${started.body.sessionLog.id}/complete`, {
+      token: signup.token,
+      body: { completionPct: 100 },
+    });
+    const dashboard = await call(server.baseUrl, 'GET', '/progress/dashboard', { token: signup.token });
+    lastWorkoutMinutes = dashboard.body.totals.workoutMinutes;
+  }
+
+  // Postgres returns NUMERIC columns as strings; a naive `existing + new` add
+  // would silently string-concatenate instead of summing on the second
+  // same-day completion. Two full-length completions should roughly double,
+  // not produce a value many times larger from concatenated digits.
+  const singleSessionMinutes = routine.routine.total_duration_sec / 60;
+  assert.ok(
+    lastWorkoutMinutes < singleSessionMinutes * 2.5,
+    `expected ~2x a single session's minutes (${singleSessionMinutes}), got ${lastWorkoutMinutes}`
+  );
+});
+
 test('sessions: complete rejects unknown session id', async (t) => {
   const server = await startTestServer();
   t.after(() => server.close());
