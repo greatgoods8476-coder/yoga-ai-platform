@@ -24,7 +24,25 @@ npm test             # integration tests against a real Postgres DB
 ```
 
 Env vars: `DATABASE_URL`, `JWT_SECRET`, `PORT` (all have dev-friendly defaults,
-see `backend/src/config.js` and `backend/src/db/pool.js`).
+see `backend/src/config.js` and `backend/src/db/pool.js`; `backend/.env.example`
+documents them for a deployed environment).
+
+### Deploying the backend (Railway)
+
+`backend/railway.toml` is ready to go, mirroring the setup used for the
+sibling memebot-hq project:
+
+1. New Railway project → **Deploy from GitHub repo** → this repo, with
+   **Root Directory** set to `backend/`.
+2. Add a **Postgres** plugin to the same project — Railway auto-injects
+   `DATABASE_URL` into the backend service, no manual wiring needed.
+3. Set `JWT_SECRET` to a real random value in the service's variables tab.
+4. Deploy. The start command (`migrate → seed → server`) is idempotent, so
+   every redeploy re-applies safely.
+
+Any other Node+Postgres host (Render, Fly.io, etc.) works the same way —
+`railway.toml` is just Railway's config format, the app itself has no
+Railway-specific code.
 
 ## Mobile app (`mobile/`)
 
