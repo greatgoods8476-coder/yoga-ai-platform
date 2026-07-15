@@ -96,7 +96,10 @@ function sequencePhase(pose) {
   if (pose.category === 'breathwork') return tags.includes('energizing') ? 'warm_up' : 'cooldown';
 
   if (pose.difficulty === 'advanced') return 'peak';
-  if (['arm_balance', 'inversion', 'backbend'].includes(pose.category)) return 'peak';
+  // A beginner-difficulty pose in one of these categories (e.g. Downward Dog,
+  // a beginner 'inversion') is a build/flow pose in practice, not a peak —
+  // only treat the category as peak-worthy once it's past beginner level.
+  if (['arm_balance', 'inversion', 'backbend'].includes(pose.category) && pose.difficulty !== 'beginner') return 'peak';
 
   if (pose.category === 'tabletop') return 'warm_up';
   if (pose.difficulty === 'beginner' && ['standing', 'seated'].includes(pose.category)

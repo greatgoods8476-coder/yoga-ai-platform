@@ -18,6 +18,10 @@ test('sequencePhase: classifies representative poses into the expected stage', (
   assert.equal(sequencePhase({ category: 'supine', difficulty: 'beginner', focus_tags: ['backbend'] }), 'build');
   assert.equal(sequencePhase({ category: 'breathwork', difficulty: 'beginner', focus_tags: ['calming'] }), 'cooldown');
   assert.equal(sequencePhase({ category: 'breathwork', difficulty: 'advanced', focus_tags: ['energizing'] }), 'warm_up');
+  // A beginner-difficulty inversion (Downward Dog) is a flow pose, not a
+  // session peak — only intermediate+ inversions/arm balances/backbends count.
+  assert.equal(sequencePhase({ category: 'inversion', difficulty: 'beginner', focus_tags: ['inversion'] }), 'build');
+  assert.equal(sequencePhase({ category: 'inversion', difficulty: 'intermediate', focus_tags: [] }), 'peak');
 });
 
 test('routine generation: a full-length session progresses warm_up -> build -> peak -> cooldown, not sorted purely by score', async (t) => {
