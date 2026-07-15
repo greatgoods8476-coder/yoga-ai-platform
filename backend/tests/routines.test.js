@@ -53,6 +53,27 @@ test('routines: total duration is close to the requested length', async (t) => {
   assert.ok(res.body.routine.total_duration_sec < 900, 'routine should not wildly overshoot the requested duration');
 });
 
+test('routines: a total beginner never receives an advanced-difficulty pose', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', {
+    body: { email: uniqueEmail('beginner'), password: 'password123' },
+  });
+  await completeOnboarding(server.baseUrl, signup.token, {
+    yoga_experience: 'none', fitness_level: 'beginner',
+    available_equipment: ['mat', 'blocks', 'strap', 'bolster', 'wall', 'chair'],
+  });
+
+  const res = await call(server.baseUrl, 'POST', '/routines/generate', {
+    token: signup.token, body: { routineType: 'one_hour_full_body', durationMin: 60 },
+  });
+  assert.equal(res.status, 201);
+
+  const advanced = res.body.items.filter((it) => it.pose.difficulty === 'advanced');
+  assert.equal(advanced.length, 0, `a total beginner should never get an advanced pose, got: ${advanced.map((i) => i.pose.slug).join(', ')}`);
+});
+
 test('routines: two profiles with different goals get different routines', async (t) => {
   const server = await startTestServer();
   t.after(() => server.close());

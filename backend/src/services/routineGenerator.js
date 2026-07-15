@@ -188,13 +188,23 @@ function scorePose(pose, profile, routineType, dateStamp) {
   return score;
 }
 
+// A pose more than one difficulty rank above the user's target is hard-
+// excluded, not just down-scored — soft scoring alone means an advanced
+// pose can still win a slot if a phase bucket is otherwise thin (e.g. very
+// few 'peak' poses pass the injury/pregnancy safety filter). This still
+// allows one step of stretch (a beginner can get an occasional intermediate
+// pose) but never a two-step jump straight to advanced.
+const MAX_DIFFICULTY_STEPS_ABOVE_TARGET = 1;
+
 // poses: rows from the `poses` table. profile: user_profiles row.
 // recentPoseIds: pose ids used in the user's immediately prior routine (for variety).
 function generateRoutine({ profile, poses, routineTypeKey, recentPoseIds = [], durationMinOverride }) {
   const routineType = ROUTINE_TYPES[routineTypeKey] || ROUTINE_TYPES.custom;
   const dateStamp = new Date().toISOString().slice(0, 10);
+  const target = targetDifficulty(profile, routineType);
 
-  const safePoses = poses.filter((p) => isSafeForProfile(p, profile));
+  const safePoses = poses.filter((p) => isSafeForProfile(p, profile)
+    && DIFFICULTY_RANK[p.difficulty] - DIFFICULTY_RANK[target] <= MAX_DIFFICULTY_STEPS_ABOVE_TARGET);
   const scored = safePoses
     .map((pose) => ({ pose, score: scorePose(pose, profile, routineType, dateStamp) }))
     .sort((a, b) => b.score - a.score);
@@ -217,7 +227,7 @@ function generateRoutine({ profile, poses, routineTypeKey, recentPoseIds = [], d
     items,
     generatedReason: {
       routineType: routineTypeKey,
-      targetDifficulty: targetDifficulty(profile, routineType),
+      targetDifficulty: target,
       topFactors: scored.slice(0, 3).map((s) => ({ pose: s.pose.slug, score: Math.round(s.score * 100) / 100 })),
     },
   };

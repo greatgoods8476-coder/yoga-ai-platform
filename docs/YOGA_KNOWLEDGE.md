@@ -37,6 +37,12 @@ matching all check category and focus_tags together
   medical advice — a real product needs clinician sign-off here.
 - **Equipment**: a pose requiring equipment the user doesn't have is
   excluded (`available_equipment` from onboarding).
+- **Difficulty ceiling**: a pose more than one difficulty rank above the
+  user's `targetDifficulty` is hard-excluded from `generateRoutine`, not
+  just down-scored — this closes a real gap where a thin phase bucket
+  (e.g. `peak`, once injury/pregnancy rules excluded most advanced poses)
+  could still hand an advanced pose to a total beginner. One step of
+  stretch (beginner → occasional intermediate) is still allowed.
 - **Adaptation feedback**: a pose skipped 3+ times gets added to
   `avoidedPoses` and stops being suggested; sore muscle groups reported via
   session feedback reduce that pose's score for a while (decays over time).
