@@ -46,16 +46,26 @@ matching all check category and focus_tags together
   the mobile client doesn't currently enforce a hard gate on this, which
   is a gap worth closing before recommending pranayama to brand-new users.
 
-## Sequencing logic (partially implemented)
+## Sequencing logic
 
-The routine generator does **not** yet implement staged sequencing (warm-up
-→ build → peak → cooldown) — it scores and picks poses, then orders
-already-used-recently poses last for variety. It does *not* guarantee a
-backbend peak is preceded by prep, or that a session ends with rest. That's
-a real gap against the "safe sequencing" principle and is the natural next
-improvement to `routineGenerator.generateRoutine`: bucket candidate poses
-by a `sequencePhase` (warm_up / build / peak / cooldown) and assemble in
-that order rather than by score alone.
+Sessions ≥10 minutes are assembled in stages, not just sorted by score:
+`routineGenerator.sequencePhase(pose)` classifies each pose into
+`warm_up` / `build` / `peak` / `cooldown` from its category, difficulty,
+and focus_tags (a heuristic, not a hand-tagged field — applies to every
+pose without per-pose upkeep). `assemblePhased` fills each phase's time
+budget (15% / 45% / 25% / 15%) in order, so a session actually warms up
+before anything hard and winds down at the end, rather than potentially
+handing a beginner an advanced backbend as the first pose. If a phase has
+no eligible poses (e.g. `peak`, when pregnancy/injury safety rules
+excluded every advanced pose), its budget flows to `build` instead of
+leaving a gap. Sessions under 10 minutes skip this — a 5-minute stretch
+doesn't need a formal warm-up/peak/cooldown shape.
+
+Still missing: this doesn't guarantee a *specific* backbend has its
+*specific* counterpose nearby (e.g. Wheel followed by a twist), just that
+the general difficulty arc is right. Prep-pose/counter-pose pairing would
+need `related_pose_slugs` to carry that semantic (it's currently just a
+loose "see also" list) — a reasonable next increment.
 
 ## Style vocabulary
 

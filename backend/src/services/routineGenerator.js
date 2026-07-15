@@ -82,6 +82,84 @@ function isSafeForProfile(pose, profile) {
   return true;
 }
 
+// Which stage of a session this pose belongs in. Real yoga sequencing
+// builds from gentle prep to a harder "peak" and back down to rest — a
+// pure top-N-by-score list has no such shape, so it can hand a beginner an
+// advanced backbend as the very first pose. This is a heuristic derived
+// from category/difficulty/focus_tags, not a hand-tagged field, so it
+// applies to every pose in the library without needing per-pose upkeep.
+function sequencePhase(pose) {
+  const tags = pose.focus_tags || [];
+
+  if (pose.category === 'restorative') return 'cooldown';
+  if (pose.category === 'supine' && !tags.includes('backbend') && !tags.includes('core') && !tags.includes('strength')) return 'cooldown';
+  if (pose.category === 'breathwork') return tags.includes('energizing') ? 'warm_up' : 'cooldown';
+
+  if (pose.difficulty === 'advanced') return 'peak';
+  if (['arm_balance', 'inversion', 'backbend'].includes(pose.category)) return 'peak';
+
+  if (pose.category === 'tabletop') return 'warm_up';
+  if (pose.difficulty === 'beginner' && ['standing', 'seated'].includes(pose.category)
+    && !tags.includes('strength') && !tags.includes('balance')) return 'warm_up';
+
+  return 'build';
+}
+
+const PHASE_ORDER = ['warm_up', 'build', 'peak', 'cooldown'];
+const PHASE_BUDGET = { warm_up: 0.15, build: 0.45, peak: 0.25, cooldown: 0.15 };
+// Below this, a session is too short for a formal warm-up/peak/cooldown
+// shape (a 5-minute stretch doesn't need one) — just take the best poses.
+const MIN_DURATION_FOR_PHASES_SEC = 600;
+
+function fillFromGroup(group, budgetSec, recentPoseIds, startSec) {
+  if (group.length === 0 || budgetSec <= 0) return { items: [], usedSec: 0 };
+
+  const fresh = group.filter((s) => !recentPoseIds.includes(s.pose.id));
+  const ordered = [...fresh, ...group.filter((s) => recentPoseIds.includes(s.pose.id))];
+
+  const items = [];
+  let usedSec = 0;
+  let i = 0;
+  while (usedSec < budgetSec && ordered.length > 0) {
+    const candidate = ordered[i % ordered.length];
+    const durationSec = candidate.pose.default_duration_sec;
+    items.push({ pose: candidate.pose, durationSec, startSec: startSec + usedSec });
+    usedSec += durationSec;
+    i += 1;
+    if (i > ordered.length * 3) break; // avoid infinite loop on a tiny group
+  }
+  return { items, usedSec };
+}
+
+// Buckets scored poses into warm_up/build/peak/cooldown and fills each
+// phase's time budget in order, so the resulting routine actually has a
+// shape instead of being sorted purely by score. Any phase with no eligible
+// poses (e.g. peak, when pregnancy/injury safety rules excluded every
+// advanced pose) donates its budget to 'build' rather than leaving a gap.
+function assemblePhased(scored, targetDurationSec, recentPoseIds) {
+  const groups = { warm_up: [], build: [], peak: [], cooldown: [] };
+  for (const s of scored) groups[sequencePhase(s.pose)].push(s);
+
+  const fractions = { ...PHASE_BUDGET };
+  for (const phase of ['peak', 'warm_up', 'cooldown']) {
+    if (groups[phase].length === 0) {
+      fractions.build += fractions[phase];
+      fractions[phase] = 0;
+    }
+  }
+
+  const items = [];
+  let totalSec = 0;
+  for (const phase of PHASE_ORDER) {
+    const budgetSec = fractions[phase] * targetDurationSec;
+    const { items: phaseItems, usedSec } = fillFromGroup(groups[phase], budgetSec, recentPoseIds, totalSec);
+    items.push(...phaseItems);
+    totalSec += usedSec;
+  }
+
+  return { items, totalSec };
+}
+
 function scorePose(pose, profile, routineType, dateStamp) {
   let score = 0;
 
@@ -120,19 +198,13 @@ function generateRoutine({ profile, poses, routineTypeKey, recentPoseIds = [], d
 
   const targetDurationSec = (durationMinOverride || routineType.durationMin || 20) * 60;
 
-  const fresh = scored.filter((s) => !recentPoseIds.includes(s.pose.id));
-  const ordered = [...fresh, ...scored.filter((s) => recentPoseIds.includes(s.pose.id))];
-
-  const items = [];
-  let totalSec = 0;
-  let i = 0;
-  while (totalSec < targetDurationSec && ordered.length > 0) {
-    const candidate = ordered[i % ordered.length];
-    const durationSec = candidate.pose.default_duration_sec;
-    items.push({ pose: candidate.pose, durationSec, startSec: totalSec });
-    totalSec += durationSec;
-    i += 1;
-    if (i > ordered.length * 3) break; // avoid infinite loop on a tiny pose library
+  let items, totalSec;
+  if (targetDurationSec >= MIN_DURATION_FOR_PHASES_SEC) {
+    ({ items, totalSec } = assemblePhased(scored, targetDurationSec, recentPoseIds));
+  } else {
+    const flat = fillFromGroup(scored, targetDurationSec, recentPoseIds, 0);
+    items = flat.items;
+    totalSec = flat.usedSec;
   }
 
   return {
@@ -148,4 +220,4 @@ function generateRoutine({ profile, poses, routineTypeKey, recentPoseIds = [], d
   };
 }
 
-module.exports = { generateRoutine, isSafeForProfile, scorePose, targetDifficulty };
+module.exports = { generateRoutine, isSafeForProfile, scorePose, targetDifficulty, sequencePhase };
