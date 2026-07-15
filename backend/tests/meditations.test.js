@@ -1,9 +1,19 @@
 const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { startTestServer, call, uniqueEmail } = require('./util');
+const { generateScriptWithLLM, generateScript } = require('../src/services/meditationGenerator');
+const { isAvailable } = require('../src/services/llmClient');
 const pool = require('../src/db/pool');
 
 after(() => pool.end());
+
+test('meditationGenerator: without an API key, the LLM path falls back to the deterministic template', async () => {
+  assert.equal(isAvailable(), false, 'this test assumes ANTHROPIC_API_KEY is not set in the test environment');
+  const llm = await generateScriptWithLLM({ category: 'stress', durationSec: 120 });
+  const template = generateScript({ category: 'stress', durationSec: 120 });
+  assert.equal(llm.script, template.script);
+  assert.equal(llm.generatedBy, undefined, 'should not claim LLM generation when it fell back to the template');
+});
 
 test('meditations: generates a script for a valid category and rejects an invalid one', async (t) => {
   const server = await startTestServer();

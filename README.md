@@ -27,6 +27,11 @@ Env vars: `DATABASE_URL`, `JWT_SECRET`, `PORT` (all have dev-friendly defaults,
 see `backend/src/config.js` and `backend/src/db/pool.js`; `backend/.env.example`
 documents them for a deployed environment).
 
+`ANTHROPIC_API_KEY` (optional) enables real LLM-generated meditation scripts
+via `backend/src/services/llmClient.js` — everything works without it, this
+just adds session-to-session script variety on top of the built-in templates
+once set. No code changes needed, just set the env var.
+
 ### Deploying the backend (Railway)
 
 `backend/railway.toml` is ready to go, mirroring the setup used for the

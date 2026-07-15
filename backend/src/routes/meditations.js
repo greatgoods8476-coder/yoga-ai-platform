@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
-const { generateScript, CATEGORIES } = require('../services/meditationGenerator');
+const { generateScriptWithLLM, CATEGORIES } = require('../services/meditationGenerator');
 const { recordMeditationMinutes } = require('../services/progressMetrics');
 
 const router = express.Router();
@@ -20,7 +20,7 @@ router.post('/generate', async (req, res) => {
   const { rows: profileRows } = await pool.query('SELECT preferred_coaching_style FROM user_profiles WHERE user_id = $1', [req.userId]);
   const coachingStyle = profileRows[0]?.preferred_coaching_style;
 
-  const result = generateScript({ category, durationSec, coachingStyle, goal });
+  const result = await generateScriptWithLLM({ category, durationSec, coachingStyle, goal });
 
   const { rows } = await pool.query(
     `INSERT INTO meditation_sessions (user_id, category, goal, duration_sec, script)
