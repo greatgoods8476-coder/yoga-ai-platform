@@ -82,10 +82,13 @@ export type Pose = {
   id: string;
   slug: string;
   name: string;
+  sanskrit_name: string | null;
   category: string;
   difficulty: string;
   benefits: string[];
   breathing_cue: string | null;
+  alignment_cues: string[];
+  beginner_modifications: string[];
 };
 
 export type Routine = {

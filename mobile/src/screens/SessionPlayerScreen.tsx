@@ -19,9 +19,13 @@ export default function SessionPlayerScreen({
   const [phase, setPhase] = useState<Phase>('practicing');
   const [difficulty, setDifficulty] = useState<'too_easy' | 'just_right' | 'too_hard' | null>(null);
   const [enjoyment, setEnjoyment] = useState<number | null>(null);
+  const [cueIndex, setCueIndex] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cueTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const current = routine.items[index];
+  const cues = current?.pose.alignment_cues?.length ? current.pose.alignment_cues : [];
+  const activeCue = cues.length > 0 ? cues[cueIndex % cues.length] : current?.pose.breathing_cue;
 
   useEffect(() => {
     api.startSession(token, routine.routine.id).then((r) => setSessionLogId(r.sessionLog.id));
@@ -40,6 +44,15 @@ export default function SessionPlayerScreen({
     }, 1000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [index, phase]);
+
+  useEffect(() => {
+    setCueIndex(0);
+    if (phase !== 'practicing') return;
+    cueTimerRef.current = setInterval(() => setCueIndex((c) => c + 1), 4000);
+    return () => {
+      if (cueTimerRef.current) clearInterval(cueTimerRef.current);
     };
   }, [index, phase]);
 
@@ -111,8 +124,9 @@ export default function SessionPlayerScreen({
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.progressText}>{index + 1} / {routine.items.length}</Text>
       <Text style={styles.poseName}>{current.pose.name}</Text>
+      {current.pose.sanskrit_name && <Text style={styles.sanskrit}>{current.pose.sanskrit_name}</Text>}
       <Text style={styles.timer}>{secondsLeft}s</Text>
-      {current.pose.breathing_cue && <Text style={styles.cue}>{current.pose.breathing_cue}</Text>}
+      {activeCue && <Text style={styles.cue}>{activeCue}</Text>}
       {current.pose.benefits?.length > 0 && (
         <Text style={styles.benefits}>Benefits: {current.pose.benefits.join(', ')}</Text>
       )}
@@ -133,6 +147,7 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, backgroundColor: theme.colors.background, padding: theme.spacing(3), justifyContent: 'center', alignItems: 'center' },
   progressText: { color: theme.colors.textMuted, marginBottom: theme.spacing(2) },
   poseName: { fontSize: 26, fontWeight: '700', color: theme.colors.text, textAlign: 'center' },
+  sanskrit: { fontSize: 15, fontStyle: 'italic', color: theme.colors.textMuted, marginTop: theme.spacing(0.5) },
   timer: { fontSize: 48, fontWeight: '200', color: theme.colors.primary, marginVertical: theme.spacing(3) },
   cue: { fontSize: 16, color: theme.colors.textMuted, textAlign: 'center', marginBottom: theme.spacing(2) },
   benefits: { fontSize: 13, color: theme.colors.textMuted, textAlign: 'center', marginBottom: theme.spacing(3) },
