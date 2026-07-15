@@ -12,15 +12,21 @@
 - [x] Mobile app shell (Expo): onboarding, home, session player, progress
 
 ## Phase 2 — Depth
-- [ ] Real LLM integration for onboarding conversation + meditation script variety
+- [x] Real LLM integration — pluggable (`llmClient.js`), meditation scripts get real
+      variety once `ANTHROPIC_API_KEY` is set, falls back to templates without it.
+      Onboarding conversation phrasing is still templated (a smaller, lower-value swap
+      to make later using the same client).
 - [x] Expand pose library beyond seed set (137 poses + 18 pranayama, full taxonomy)
 - [x] Staged routine sequencing (warm_up/build/peak/cooldown) + hard difficulty cap
-- [x] Smart notification suggestions (streak risk, stress, re-engagement, recovery) —
-      logic + in-app banner only; actual push delivery needs an APNs/FCM device-token
-      pipeline that's out of scope here
-- [ ] Wearable heart-rate ingestion (manual import first, then Health/Google Fit)
-- [ ] Push notification delivery (APNs/FCM) on top of the existing suggestion engine
-- [ ] Social: friends, challenges, streak sharing
+- [x] Smart notification suggestions (streak risk, stress, re-engagement, recovery)
+- [x] Push notification delivery via Expo's push service — no APNs/FCM credentials of
+      our own needed. Real caveat: Expo Go (SDK 53+) can't receive remote push, only a
+      development/production build can — verified the registration code path is
+      crash-safe on web/no-device, not end-to-end device delivery (needs `eas build`).
+- [x] Manual heart-rate entry on session completion (wearable sync — HealthKit/Google
+      Fit — is still real native work, not attempted here)
+- [ ] Social: friends + streak leaderboard (challenges/marketplace/live classes remain
+      out of scope — genuinely large product features, not reasonable to fake)
 
 ## Phase 3 — Sensing
 - [ ] On-device pose detection (MoveNet/BlazePose) in mobile app

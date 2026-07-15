@@ -68,6 +68,8 @@ export const api = {
 
   notificationSuggestions: (token: string) =>
     request<{ suggestions: NotificationSuggestion[] }>('GET', '/notifications/suggestions', { token }),
+  registerPushToken: (token: string, pushToken: string, platform: string) =>
+    request<{ ok: true }>('POST', '/notifications/register-token', { token, body: { token: pushToken, platform } }),
 };
 
 export type NotificationSuggestion = {

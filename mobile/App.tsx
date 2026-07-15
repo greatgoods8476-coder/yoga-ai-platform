@@ -9,6 +9,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import SessionPlayerScreen from './src/screens/SessionPlayerScreen';
 import MeditationScreen from './src/screens/MeditationScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
+import { useRegisterPushToken } from './src/hooks/usePushNotifications';
 import { theme } from './src/theme';
 
 type Screen = 'home' | 'session' | 'meditation' | 'progress';
@@ -18,6 +19,8 @@ function InnerApp() {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [screen, setScreen] = useState<Screen>('home');
   const [activeRoutine, setActiveRoutine] = useState<RoutineResponse | null>(null);
+
+  useRegisterPushToken(token);
 
   useEffect(() => {
     if (!token) {

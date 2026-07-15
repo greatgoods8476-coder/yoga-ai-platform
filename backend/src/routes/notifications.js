@@ -1,47 +1,36 @@
 const express = require('express');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
-const { computeSuggestions } = require('../services/notificationEngine');
+const { getSuggestionsForUser, notifyUserOfTopSuggestion } = require('../services/notificationService');
 
 const router = express.Router();
 router.use(requireAuth);
 
 router.get('/suggestions', async (req, res) => {
-  const { rows: profileRows } = await pool.query(
-    'SELECT stress_level, goals FROM user_profiles WHERE user_id = $1',
-    [req.userId]
-  );
-  if (profileRows.length === 0) return res.status(404).json({ error: 'profile not found' });
-
-  const { rows: sessionRows } = await pool.query(
-    `SELECT completed_at, difficulty_feedback FROM session_logs
-     WHERE user_id = $1 AND completed_at IS NOT NULL
-     ORDER BY completed_at DESC LIMIT 1`,
-    [req.userId]
-  );
-  const { rows: meditationRows } = await pool.query(
-    'SELECT created_at FROM meditation_sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
-    [req.userId]
-  );
-  const { rows: countRows } = await pool.query(
-    'SELECT count(*) FROM session_logs WHERE user_id = $1 AND completed_at IS NOT NULL',
-    [req.userId]
-  );
-  const { rows: streakRows } = await pool.query(
-    `SELECT streak_days FROM progress_metrics WHERE user_id = $1
-     ORDER BY metric_date DESC LIMIT 1`,
-    [req.userId]
-  );
-
-  const suggestions = computeSuggestions({
-    profile: profileRows[0],
-    lastSession: sessionRows[0] || null,
-    lastMeditation: meditationRows[0] || null,
-    currentStreak: streakRows[0]?.streak_days || 0,
-    hasEverPracticed: Number(countRows[0].count) > 0,
-  });
-
+  const suggestions = await getSuggestionsForUser(req.userId);
+  if (suggestions === null) return res.status(404).json({ error: 'profile not found' });
   res.json({ suggestions });
+});
+
+router.post('/register-token', async (req, res) => {
+  const { token, platform } = req.body || {};
+  if (!token) return res.status(400).json({ error: 'token is required' });
+
+  await pool.query(
+    `INSERT INTO push_tokens (user_id, token, platform) VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, token) DO UPDATE SET platform = EXCLUDED.platform`,
+    [req.userId, token, platform || null]
+  );
+  res.status(201).json({ ok: true });
+});
+
+// Sends the user's current top suggestion as a real push notification right
+// now (rather than waiting for the daily sweep) — useful for the mobile app
+// to offer a "remind me later today" action, and for verifying the whole
+// push pipeline end-to-end without waiting on the scheduler.
+router.post('/send-top', async (req, res) => {
+  const result = await notifyUserOfTopSuggestion(req.userId);
+  res.json(result);
 });
 
 module.exports = router;

@@ -64,6 +64,23 @@ EXPO_PUBLIC_API_URL=http://localhost:4000 npx expo start
 (or `10.0.2.2:4000` for the Android emulator) when running on a physical
 device or simulator, since `localhost` there resolves to the device itself.
 
+### Push notifications
+
+Devices register for push automatically (`src/hooks/usePushNotifications.ts`)
+via Expo's push service — no Apple/Google developer account needed for this
+to work in principle. Two real limits to know about:
+
+- **Simulators/emulators can't receive push at all.** Test on a physical device.
+- **Expo Go (SDK 53+) can't receive remote push notifications** — only a
+  development or production build can (`eas build --profile development`).
+  Registration silently no-ops on Expo Go rather than erroring.
+
+The backend sends via `backend/src/services/pushNotifications.js` (Expo's
+public push API, no credentials required) on a call to
+`POST /notifications/send-top`, and via an hourly sweep
+(`notificationService.sweepAllUsers`, wired in `server.js`) that skips users
+already notified today.
+
 Both pieces were verified together in this session: full onboarding →
 personalized routine generation → session playback → adaptation feedback →
 progress dashboard → meditation generation, running against a live Postgres
