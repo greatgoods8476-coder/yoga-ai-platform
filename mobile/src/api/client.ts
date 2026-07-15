@@ -65,6 +65,16 @@ export const api = {
 
   progressDashboard: (token: string, days = 30) =>
     request<ProgressDashboard>('GET', `/progress/dashboard?days=${days}`, { token }),
+
+  notificationSuggestions: (token: string) =>
+    request<{ suggestions: NotificationSuggestion[] }>('GET', '/notifications/suggestions', { token }),
+};
+
+export type NotificationSuggestion = {
+  id: string;
+  type: string;
+  priority: number;
+  message: string;
 };
 
 export type OnboardingField = {

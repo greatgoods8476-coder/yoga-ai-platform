@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { api, RoutineResponse } from '../api/client';
+import { api, NotificationSuggestion, RoutineResponse } from '../api/client';
 import { theme } from '../theme';
 
 const ROUTINE_TYPES: { key: string; label: string }[] = [
@@ -26,6 +26,11 @@ export default function HomeScreen({
 }) {
   const [generating, setGenerating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<NotificationSuggestion | null>(null);
+
+  useEffect(() => {
+    api.notificationSuggestions(token).then((r) => setSuggestion(r.suggestions[0] || null)).catch(() => {});
+  }, []);
 
   async function pick(routineType: string) {
     setGenerating(routineType);
@@ -44,6 +49,12 @@ export default function HomeScreen({
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>What would you like to practice?</Text>
       {error && <Text style={styles.error}>{error}</Text>}
+
+      {suggestion && (
+        <View style={styles.banner}>
+          <Text style={styles.bannerText}>{suggestion.message}</Text>
+        </View>
+      )}
 
       <View style={styles.grid}>
         {ROUTINE_TYPES.map((rt) => (
@@ -69,6 +80,11 @@ export default function HomeScreen({
 const styles = StyleSheet.create({
   container: { flexGrow: 1, backgroundColor: theme.colors.background, padding: theme.spacing(3) },
   title: { fontSize: 22, fontWeight: '600', color: theme.colors.text, marginBottom: theme.spacing(3) },
+  banner: {
+    backgroundColor: theme.colors.accent, borderRadius: theme.radius,
+    padding: theme.spacing(2), marginBottom: theme.spacing(3),
+  },
+  bannerText: { color: theme.colors.primaryDark, fontSize: 14, lineHeight: 20 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing(1.5) },
   card: {
     width: '47%', backgroundColor: theme.colors.surface, borderRadius: theme.radius,

@@ -13,9 +13,13 @@
 
 ## Phase 2 — Depth
 - [ ] Real LLM integration for onboarding conversation + meditation script variety
-- [ ] Expand pose library beyond seed set (100+ poses with muscle metadata)
+- [x] Expand pose library beyond seed set (137 poses + 18 pranayama, full taxonomy)
+- [x] Staged routine sequencing (warm_up/build/peak/cooldown) + hard difficulty cap
+- [x] Smart notification suggestions (streak risk, stress, re-engagement, recovery) —
+      logic + in-app banner only; actual push delivery needs an APNs/FCM device-token
+      pipeline that's out of scope here
 - [ ] Wearable heart-rate ingestion (manual import first, then Health/Google Fit)
-- [ ] Notification scheduling service (smart reminders)
+- [ ] Push notification delivery (APNs/FCM) on top of the existing suggestion engine
 - [ ] Social: friends, challenges, streak sharing
 
 ## Phase 3 — Sensing
