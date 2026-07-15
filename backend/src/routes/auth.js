@@ -21,9 +21,10 @@ router.post('/signup', async (req, res) => {
   if (existing.rows.length > 0) return res.status(409).json({ error: 'email already registered' });
 
   const passwordHash = await bcrypt.hash(password, 10);
+  const displayName = email.split('@')[0];
   const { rows } = await pool.query(
-    'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id',
-    [email.toLowerCase(), passwordHash]
+    'INSERT INTO users (email, password_hash, display_name) VALUES ($1, $2, $3) RETURNING id',
+    [email.toLowerCase(), passwordHash, displayName]
   );
   const userId = rows[0].id;
   await pool.query('INSERT INTO user_profiles (user_id) VALUES ($1)', [userId]);

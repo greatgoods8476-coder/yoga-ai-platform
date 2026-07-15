@@ -9,6 +9,7 @@ const sessionRoutes = require('./routes/sessions');
 const meditationRoutes = require('./routes/meditations');
 const progressRoutes = require('./routes/progress');
 const notificationRoutes = require('./routes/notifications');
+const socialRoutes = require('./routes/social');
 
 function createApp() {
   const app = express();
@@ -24,6 +25,7 @@ function createApp() {
   app.use('/meditations', meditationRoutes);
   app.use('/progress', progressRoutes);
   app.use('/notifications', notificationRoutes);
+  app.use('/social', socialRoutes);
 
   app.use((err, req, res, next) => {
     console.error(err);

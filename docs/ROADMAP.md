@@ -25,8 +25,17 @@
       crash-safe on web/no-device, not end-to-end device delivery (needs `eas build`).
 - [x] Manual heart-rate entry on session completion (wearable sync — HealthKit/Google
       Fit — is still real native work, not attempted here)
-- [ ] Social: friends + streak leaderboard (challenges/marketplace/live classes remain
-      out of scope — genuinely large product features, not reasonable to fake)
+- [x] Social: friends + streak leaderboard — friend requests by email, accept/decline,
+      a leaderboard scoped to accepted friends only (verified two-account flow live in
+      a browser). Challenges, an instructor marketplace, and live classes remain out of
+      scope — genuinely large product features, not reasonable to fake.
+
+**Phase 2 is now complete.** Everything above works without any external account beyond
+what's already set up (Postgres). Where a feature has a real external dependency
+(`ANTHROPIC_API_KEY` for LLM variety, an EAS build for push delivery to a physical
+device, Health/Google Fit accounts for wearable sync), the integration point is built
+and documented so supplying that credential is the only remaining step — see each
+bullet above and the relevant `.env.example` / README section.
 
 ## Phase 3 — Sensing
 - [ ] On-device pose detection (MoveNet/BlazePose) in mobile app

@@ -70,6 +70,16 @@ export const api = {
     request<{ suggestions: NotificationSuggestion[] }>('GET', '/notifications/suggestions', { token }),
   registerPushToken: (token: string, pushToken: string, platform: string) =>
     request<{ ok: true }>('POST', '/notifications/register-token', { token, body: { token: pushToken, platform } }),
+
+  sendFriendRequest: (token: string, email: string) =>
+    request<{ friendship: Friendship }>('POST', '/social/friends/request', { token, body: { email } }),
+  friendRequests: (token: string) => request<{ requests: FriendRequest[] }>('GET', '/social/friends/requests', { token }),
+  acceptFriendRequest: (token: string, friendshipId: string) =>
+    request<{ friendship: Friendship }>('POST', `/social/friends/${friendshipId}/accept`, { token }),
+  declineFriendRequest: (token: string, friendshipId: string) =>
+    request<{ ok: true }>('POST', `/social/friends/${friendshipId}/decline`, { token }),
+  friends: (token: string) => request<{ friends: Friend[] }>('GET', '/social/friends', { token }),
+  leaderboard: (token: string) => request<{ leaderboard: LeaderboardEntry[] }>('GET', '/social/leaderboard', { token }),
 };
 
 export type NotificationSuggestion = {
@@ -78,6 +88,11 @@ export type NotificationSuggestion = {
   priority: number;
   message: string;
 };
+
+export type Friendship = { id: string; requester_id: string; addressee_id: string; status: string };
+export type FriendRequest = { id: string; requester_user_id: string; display_name: string; email: string; created_at: string };
+export type Friend = { friendship_id: string; friend_user_id: string; display_name: string };
+export type LeaderboardEntry = { user_id: string; display_name: string; streak_days: number; workout_minutes: string; isYou: boolean };
 
 export type OnboardingField = {
   key: string;
