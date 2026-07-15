@@ -28,7 +28,7 @@ function clampScore(n) {
   return Math.max(0, Math.min(100, n));
 }
 
-async function recordSessionCompletion({ userId, workoutMinutes, completionPct, enjoymentRating, difficultyFeedback, goalTags }) {
+async function recordSessionCompletion({ userId, workoutMinutes, completionPct, enjoymentRating, difficultyFeedback, goalTags, avgHeartRate }) {
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
@@ -55,13 +55,16 @@ async function recordSessionCompletion({ userId, workoutMinutes, completionPct, 
     workout_minutes: Number(existing?.workout_minutes || 0) + workoutMinutes,
     meditation_minutes: Number(existing?.meditation_minutes || 0),
     streak_days: streak,
+    avg_heart_rate: avgHeartRate !== null && avgHeartRate !== undefined
+      ? ema(existing?.avg_heart_rate, avgHeartRate)
+      : existing?.avg_heart_rate ?? null,
   };
 
   await pool.query(
     `INSERT INTO progress_metrics (
        user_id, metric_date, flexibility_score, mobility_score, balance_score, strength_score,
-       meditation_minutes, workout_minutes, streak_days, mood_score, stress_score
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       meditation_minutes, workout_minutes, streak_days, mood_score, stress_score, avg_heart_rate
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
      ON CONFLICT (user_id, metric_date) DO UPDATE SET
        flexibility_score = EXCLUDED.flexibility_score,
        mobility_score = EXCLUDED.mobility_score,
@@ -71,9 +74,10 @@ async function recordSessionCompletion({ userId, workoutMinutes, completionPct, 
        workout_minutes = EXCLUDED.workout_minutes,
        streak_days = EXCLUDED.streak_days,
        mood_score = EXCLUDED.mood_score,
-       stress_score = EXCLUDED.stress_score`,
+       stress_score = EXCLUDED.stress_score,
+       avg_heart_rate = EXCLUDED.avg_heart_rate`,
     [userId, today, next.flexibility_score, next.mobility_score, next.balance_score, next.strength_score,
-      next.meditation_minutes, next.workout_minutes, next.streak_days, next.mood_score, next.stress_score]
+      next.meditation_minutes, next.workout_minutes, next.streak_days, next.mood_score, next.stress_score, next.avg_heart_rate]
   );
 }
 

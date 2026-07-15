@@ -84,6 +84,33 @@ test('sessions: workout minutes accumulate numerically across same-day completio
   );
 });
 
+test('sessions: heart rate is stored on the log and surfaced on the dashboard, garbage values are dropped', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { signup, routine } = await setupUserWithRoutine(server.baseUrl);
+
+  const started = await call(server.baseUrl, 'POST', '/sessions', { token: signup.token, body: { routineId: routine.routine.id } });
+  const completed = await call(server.baseUrl, 'POST', `/sessions/${started.body.sessionLog.id}/complete`, {
+    token: signup.token,
+    body: { completionPct: 100, avgHeartRate: 98, maxHeartRate: 140 },
+  });
+  assert.equal(completed.status, 200);
+  assert.equal(completed.body.sessionLog.avg_heart_rate, 98);
+  assert.equal(completed.body.sessionLog.max_heart_rate, 140);
+
+  const dashboard = await call(server.baseUrl, 'GET', '/progress/dashboard', { token: signup.token });
+  const latest = dashboard.body.days[dashboard.body.days.length - 1];
+  assert.equal(Math.round(Number(latest.avg_heart_rate)), 98);
+
+  const startedBad = await call(server.baseUrl, 'POST', '/sessions', { token: signup.token, body: { routineId: routine.routine.id } });
+  const completedBad = await call(server.baseUrl, 'POST', `/sessions/${startedBad.body.sessionLog.id}/complete`, {
+    token: signup.token,
+    body: { completionPct: 100, avgHeartRate: 999 },
+  });
+  assert.equal(completedBad.body.sessionLog.avg_heart_rate, null, 'an implausible heart rate should be dropped, not stored');
+});
+
 test('sessions: complete rejects unknown session id', async (t) => {
   const server = await startTestServer();
   t.after(() => server.close());

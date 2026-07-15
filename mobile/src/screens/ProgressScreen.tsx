@@ -24,6 +24,7 @@ export default function ProgressScreen({ token, onBack }: { token: string; onBac
   }
 
   const latest = data.days[data.days.length - 1];
+  const latestHeartRate = [...data.days].reverse().find((d) => d.avg_heart_rate !== null)?.avg_heart_rate ?? null;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -44,6 +45,16 @@ export default function ProgressScreen({ token, onBack }: { token: string; onBac
           <Score label="Strength" value={latest.strength_score} />
           <Score label="Mood" value={latest.mood_score} />
           <Score label="Stress" value={latest.stress_score} />
+        </View>
+      )}
+
+      {latestHeartRate !== null && (
+        <View style={styles.scoresCard}>
+          <Text style={styles.cardTitle}>Heart rate</Text>
+          <View style={styles.scoreRow}>
+            <Text style={styles.scoreLabel}>Recent average</Text>
+            <Text style={styles.scoreValue}>{Math.round(Number(latestHeartRate))} bpm</Text>
+          </View>
         </View>
       )}
 

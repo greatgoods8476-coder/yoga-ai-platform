@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api, RoutineResponse } from '../api/client';
 import { theme } from '../theme';
 
@@ -19,6 +19,7 @@ export default function SessionPlayerScreen({
   const [phase, setPhase] = useState<Phase>('practicing');
   const [difficulty, setDifficulty] = useState<'too_easy' | 'just_right' | 'too_hard' | null>(null);
   const [enjoyment, setEnjoyment] = useState<number | null>(null);
+  const [avgHeartRate, setAvgHeartRate] = useState('');
   const [cueIndex, setCueIndex] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cueTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -69,11 +70,13 @@ export default function SessionPlayerScreen({
   async function submitFeedback() {
     if (!sessionLogId) return;
     const completionPct = Math.round(((routine.items.length - skipped.length) / routine.items.length) * 100);
+    const parsedHeartRate = avgHeartRate.trim() ? Number(avgHeartRate) : undefined;
     await api.completeSession(token, sessionLogId, {
       completionPct,
       skippedPoseIds: skipped,
       difficultyFeedback: difficulty || undefined,
       enjoymentRating: enjoyment || undefined,
+      avgHeartRate: parsedHeartRate,
     });
     setPhase('done');
   }
@@ -100,6 +103,16 @@ export default function SessionPlayerScreen({
             </Pressable>
           ))}
         </View>
+
+        <Text style={styles.label}>Average heart rate (optional, from a watch or fitness tracker)</Text>
+        <TextInput
+          style={styles.heartRateInput}
+          keyboardType="number-pad"
+          placeholder="e.g. 95"
+          placeholderTextColor={theme.colors.textMuted}
+          value={avgHeartRate}
+          onChangeText={setAvgHeartRate}
+        />
 
         <Pressable style={styles.primaryButton} onPress={submitFeedback}>
           <Text style={styles.primaryButtonText}>Save & Finish</Text>
@@ -154,6 +167,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '600', color: theme.colors.text, marginBottom: theme.spacing(3), textAlign: 'center' },
   subtitle: { fontSize: 15, color: theme.colors.textMuted, textAlign: 'center', marginBottom: theme.spacing(3) },
   label: { color: theme.colors.textMuted, marginBottom: theme.spacing(1), alignSelf: 'flex-start' },
+  heartRateInput: {
+    alignSelf: 'stretch', backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border,
+    borderRadius: theme.radius, padding: theme.spacing(1.5), marginBottom: theme.spacing(3), fontSize: 16, color: theme.colors.text,
+  },
   row: { flexDirection: 'row', gap: theme.spacing(1.5), marginTop: theme.spacing(2), marginBottom: theme.spacing(3) },
   chip: { paddingHorizontal: theme.spacing(2), paddingVertical: theme.spacing(1), borderRadius: theme.radius, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
   chipSelected: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },

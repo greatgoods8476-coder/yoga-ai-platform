@@ -127,6 +127,8 @@ export type CompleteSessionPayload = {
   difficultyFeedback?: 'too_easy' | 'just_right' | 'too_hard';
   enjoymentRating?: number;
   notes?: string;
+  avgHeartRate?: number;
+  maxHeartRate?: number;
 };
 
 export type Meditation = { id: string; category: string; goal: string; duration_sec: number; script: string };
@@ -142,6 +144,7 @@ export type ProgressDay = {
   meditation_minutes: string;
   workout_minutes: string;
   streak_days: number;
+  avg_heart_rate: string | null;
 };
 
 export type ProgressDashboard = {
