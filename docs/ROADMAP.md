@@ -54,6 +54,16 @@ bullet above and the relevant `.env.example` / README section.
       server UTC hour since no per-user timezone is stored yet — best-effort, not a
       precise local-time schedule.
 
+## Phase 4 (partial) — Avatar
+- [x] 3D avatar rendering + customization — real face/hair/outfit customization
+      and 3D rendering via Ready Player Me (embedded WebView creator) +
+      `<model-viewer>` for display, GLB URL persisted on the profile. Not
+      verified end-to-end from the sandbox this was built in (its domains are
+      network-blocked there) — needs a live device/browser check. Purchasable
+      designer-inspired clothing and a currency/store layer are explicitly
+      deferred — real legal exposure (trademark/trade dress) and product scope
+      that need a dedicated design pass, not bundled into this foundation.
+
 ## Phase 3 — Sensing
 - [ ] On-device pose detection (MoveNet/BlazePose) in mobile app
 - [ ] Live form scoring UI + corrective cue overlay

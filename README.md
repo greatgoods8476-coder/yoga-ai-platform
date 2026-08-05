@@ -85,3 +85,23 @@ Both pieces were verified together in this session: full onboarding →
 personalized routine generation → session playback → adaptation feedback →
 progress dashboard → meditation generation, running against a live Postgres
 instance and driven through the actual UI in a browser.
+
+### AI coach avatar (3D, customizable)
+
+`src/screens/AvatarScreen.tsx` embeds [Ready Player Me](https://readyplayer.me)'s
+web avatar creator in a `WebView` (their `demo.readyplayer.me` quickstart
+subdomain — no account or API key needed for this) so users get a real,
+professional-looking 3D character with face/hair/outfit customization, not a
+placeholder. On export it receives a GLB model URL via `postMessage`, saves it
+to `PATCH /profile/avatar` (`user_profiles.avatar_preference.avatarUrl`), and
+renders it back with Google's `<model-viewer>` web component (also loaded in a
+`WebView`, so no native 3D engine/linking is needed — works in Expo Go).
+
+**Real caveat:** this integration was built to Ready Player Me's documented
+API but could not be exercised end-to-end from the sandbox this was built in
+— its domains are blocked by that environment's outbound network policy (the
+same kind of block that affected verifying the Railway deploy directly; the
+deploy itself was still confirmed working via logs and a browser check). Test
+it live on a device/browser before relying on it. Purchasable/branded
+clothing and a virtual currency store are explicitly out of scope for this
+pass — this is the free customization foundation only.

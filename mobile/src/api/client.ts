@@ -82,6 +82,10 @@ export const api = {
     request<{ ok: true }>('POST', `/social/friends/${friendshipId}/decline`, { token }),
   friends: (token: string) => request<{ friends: Friend[] }>('GET', '/social/friends', { token }),
   leaderboard: (token: string) => request<{ leaderboard: LeaderboardEntry[] }>('GET', '/social/leaderboard', { token }),
+
+  getAvatar: (token: string) => request<{ avatarPreference: AvatarPreference }>('GET', '/profile/avatar', { token }),
+  saveAvatar: (token: string, avatarUrl: string) =>
+    request<{ avatarPreference: AvatarPreference }>('PATCH', '/profile/avatar', { token, body: { avatarUrl } }),
 };
 
 export type NotificationSuggestion = {
@@ -106,6 +110,8 @@ export type OnboardingField = {
 };
 
 export type YogaLevel = { level: string; label: string; tagline: string; cautious: boolean };
+
+export type AvatarPreference = { instructorGender?: string; avatarUrl?: string };
 
 export type OnboardingState = {
   done: boolean;

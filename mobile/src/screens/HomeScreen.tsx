@@ -21,7 +21,7 @@ export default function HomeScreen({
 }: {
   token: string;
   onStartSession: (routine: RoutineResponse) => void;
-  onNavigate: (screen: 'progress' | 'meditation' | 'social') => void;
+  onNavigate: (screen: 'progress' | 'meditation' | 'social' | 'avatar') => void;
   onLogout: () => void;
 }) {
   const [generating, setGenerating] = useState<string | null>(null);
@@ -72,6 +72,7 @@ export default function HomeScreen({
         <Pressable onPress={() => onNavigate('meditation')}><Text style={styles.link}>Meditation</Text></Pressable>
         <Pressable onPress={() => onNavigate('progress')}><Text style={styles.link}>Progress</Text></Pressable>
         <Pressable onPress={() => onNavigate('social')}><Text style={styles.link}>Friends</Text></Pressable>
+        <Pressable onPress={() => onNavigate('avatar')}><Text style={styles.link}>My Coach</Text></Pressable>
         <Pressable onPress={onLogout}><Text style={styles.link}>Log out</Text></Pressable>
       </View>
     </ScrollView>

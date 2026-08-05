@@ -11,10 +11,11 @@ import SessionPlayerScreen from './src/screens/SessionPlayerScreen';
 import MeditationScreen from './src/screens/MeditationScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import SocialScreen from './src/screens/SocialScreen';
+import AvatarScreen from './src/screens/AvatarScreen';
 import { useRegisterPushToken } from './src/hooks/usePushNotifications';
 import { theme } from './src/theme';
 
-type Screen = 'home' | 'session' | 'meditation' | 'progress' | 'social';
+type Screen = 'home' | 'session' | 'meditation' | 'progress' | 'social' | 'avatar';
 
 function InnerApp() {
   const { token, loading } = useAuth();
@@ -101,6 +102,10 @@ function InnerApp() {
 
   if (screen === 'social') {
     return <SocialScreen token={token} onBack={() => setScreen('home')} />;
+  }
+
+  if (screen === 'avatar') {
+    return <AvatarScreen token={token} onBack={() => setScreen('home')} />;
   }
 
   return (
