@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('express-async-errors');
 
 const authRoutes = require('./routes/auth');
@@ -11,14 +13,23 @@ const progressRoutes = require('./routes/progress');
 const notificationRoutes = require('./routes/notifications');
 const socialRoutes = require('./routes/social');
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
+});
+
 function createApp() {
   const app = express();
+  app.use(helmet());
   app.use(cors());
   app.use(express.json());
 
   app.get('/health', (req, res) => res.json({ ok: true }));
 
-  app.use('/auth', authRoutes);
+  app.use('/auth', authLimiter, authRoutes);
   app.use('/onboarding', onboardingRoutes);
   app.use('/routines', routineRoutes);
   app.use('/sessions', sessionRoutes);
