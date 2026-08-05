@@ -68,21 +68,38 @@ async function notifyUserOfTopSuggestion(userId) {
   return { sent: result.sent > 0, suggestion: top, pushResult: result };
 }
 
-// Daily sweep: every user with at least one registered device who hasn't
-// already been notified today gets their top suggestion sent. Meant to be
-// called on an interval from server.js (not wired into app.js/tests — the
-// interval itself isn't something a test suite should wait on).
-async function sweepAllUsers() {
+// Maps a user's preferred practice time (workout_schedule.preferredTime,
+// collected during onboarding) to an hour window the sweep should fire in.
+// Runs against the server's own clock — there's no per-user timezone stored,
+// so this is a best-effort match, not a precise local-time schedule.
+const PREFERRED_TIME_WINDOWS = { morning: [5, 11], midday: [11, 15], evening: [15, 22] };
+
+function isWithinPreferredWindow(preferredTime, hour) {
+  const window = PREFERRED_TIME_WINDOWS[preferredTime];
+  if (!window) return true; // 'varies', unset, or unrecognized: no restriction
+  return hour >= window[0] && hour < window[1];
+}
+
+// Daily sweep: every user with at least one registered device, reminders
+// enabled, whose preferred practice time matches the current hour, and who
+// hasn't already been notified today gets their top suggestion sent. Meant
+// to be called on an interval from server.js (not wired into app.js/tests —
+// the interval itself isn't something a test suite should wait on).
+async function sweepAllUsers(now = new Date()) {
   const { rows } = await pool.query(
-    `SELECT DISTINCT pt.user_id FROM push_tokens pt
-     WHERE NOT EXISTS (
-       SELECT 1 FROM notification_log nl
-       WHERE nl.user_id = pt.user_id AND nl.sent_date = CURRENT_DATE
-     )`
+    `SELECT DISTINCT pt.user_id, up.workout_schedule FROM push_tokens pt
+     JOIN user_profiles up ON up.user_id = pt.user_id
+     WHERE up.reminders_enabled = true
+       AND NOT EXISTS (
+         SELECT 1 FROM notification_log nl
+         WHERE nl.user_id = pt.user_id AND nl.sent_date = CURRENT_DATE
+       )`
   );
 
+  const hour = now.getUTCHours();
   let notified = 0;
-  for (const { user_id: userId } of rows) {
+  for (const { user_id: userId, workout_schedule: schedule } of rows) {
+    if (!isWithinPreferredWindow(schedule?.preferredTime, hour)) continue;
     try {
       const result = await notifyUserOfTopSuggestion(userId);
       if (result.sent) notified += 1;
@@ -93,4 +110,4 @@ async function sweepAllUsers() {
   return { usersChecked: rows.length, notified };
 }
 
-module.exports = { getSuggestionsForUser, notifyUserOfTopSuggestion, sweepAllUsers };
+module.exports = { getSuggestionsForUser, notifyUserOfTopSuggestion, sweepAllUsers, isWithinPreferredWindow };

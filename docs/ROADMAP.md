@@ -37,6 +37,23 @@ device, Health/Google Fit accounts for wearable sync), the integration point is 
 and documented so supplying that credential is the only remaining step — see each
 bullet above and the relevant `.env.example` / README section.
 
+## Phase 2.5 — Onboarding polish
+- [x] Backend hardening: helmet security headers, rate-limited `/auth`, fail-fast on a
+      missing `JWT_SECRET` in production
+- [x] Warmer onboarding question copy + a progress bar (`answered`/`total`) on every
+      in-progress question
+- [x] Practice-level assessment (`levelAssessment.js`) computed from experience,
+      fitness, flexibility, and mobility answers, safety-capped to "Rooted Beginner"
+      when current pain/injury is reported regardless of experience
+- [x] Post-onboarding reveal screen: shows the computed level and immediately
+      generates a tailored first class (reuses the existing `custom` routine
+      generator), with a one-tap "Start my first class" CTA
+- [x] Reminders opt-in on the reveal screen, wired into the existing notification
+      sweep so it only fires within the user's preferred practice-time window
+      (`workout_schedule.preferredTime`, already collected). Caveat: gating runs on
+      server UTC hour since no per-user timezone is stored yet — best-effort, not a
+      precise local-time schedule.
+
 ## Phase 3 — Sensing
 - [ ] On-device pose detection (MoveNet/BlazePose) in mobile app
 - [ ] Live form scoring UI + corrective cue overlay

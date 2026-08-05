@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { api, OnboardingField } from '../api/client';
+import { api, OnboardingField, YogaLevel } from '../api/client';
 import { theme } from '../theme';
 
-export default function OnboardingScreen({ token, onComplete }: { token: string; onComplete: () => void }) {
+export default function OnboardingScreen({ token, onComplete }: { token: string; onComplete: (yogaLevel?: YogaLevel) => void }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [question, setQuestion] = useState<OnboardingField | null>(null);
+  const [progress, setProgress] = useState<{ answered: number; total: number } | null>(null);
   const [textValue, setTextValue] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -13,9 +14,10 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
 
   useEffect(() => {
     api.onboardingStart(token).then((state) => {
-      if (state.done) return onComplete();
+      if (state.done) return onComplete(state.yogaLevel);
       setSessionId(state.sessionId);
       setQuestion(state.question || null);
+      setProgress(state.progress || null);
       setLoading(false);
     });
   }, []);
@@ -31,8 +33,9 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
     try {
       const state = await api.onboardingAnswer(token, sessionId, question.key, value);
       resetInputs();
-      if (state.done) return onComplete();
+      if (state.done) return onComplete(state.yogaLevel);
       setQuestion(state.question || null);
+      setProgress(state.progress || null);
     } finally {
       setSubmitting(false);
     }
@@ -54,8 +57,18 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
     }
   }
 
+  const progressPct = progress && progress.total > 0 ? Math.min(1, progress.answered / progress.total) : 0;
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {progress && (
+        <View style={styles.progressWrap}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progressPct * 100}%` }]} />
+          </View>
+          <Text style={styles.progressLabel}>Getting to know you — {progress.answered} of ~{progress.total}</Text>
+        </View>
+      )}
       <Text style={styles.prompt}>{question.prompt}</Text>
 
       {question.type === 'number' && (
@@ -131,6 +144,10 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
 const styles = StyleSheet.create({
   container: { flexGrow: 1, backgroundColor: theme.colors.background, padding: theme.spacing(3), justifyContent: 'center' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background },
+  progressWrap: { marginBottom: theme.spacing(3) },
+  progressTrack: { height: 6, borderRadius: 3, backgroundColor: theme.colors.border, overflow: 'hidden' },
+  progressFill: { height: 6, borderRadius: 3, backgroundColor: theme.colors.primary },
+  progressLabel: { color: theme.colors.textMuted, fontSize: 12, marginTop: theme.spacing(0.75) },
   prompt: { fontSize: 20, fontWeight: '600', color: theme.colors.text, marginBottom: theme.spacing(3) },
   input: {
     backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border,

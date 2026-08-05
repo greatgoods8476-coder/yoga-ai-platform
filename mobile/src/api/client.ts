@@ -70,6 +70,8 @@ export const api = {
     request<{ suggestions: NotificationSuggestion[] }>('GET', '/notifications/suggestions', { token }),
   registerPushToken: (token: string, pushToken: string, platform: string) =>
     request<{ ok: true }>('POST', '/notifications/register-token', { token, body: { token: pushToken, platform } }),
+  setReminderPreference: (token: string, remindersEnabled: boolean) =>
+    request<{ remindersEnabled: boolean }>('PATCH', '/notifications/preferences', { token, body: { remindersEnabled } }),
 
   sendFriendRequest: (token: string, email: string) =>
     request<{ friendship: Friendship }>('POST', '/social/friends/request', { token, body: { email } }),
@@ -103,7 +105,15 @@ export type OnboardingField = {
   max?: number;
 };
 
-export type OnboardingState = { done: boolean; sessionId: string; question?: OnboardingField };
+export type YogaLevel = { level: string; label: string; tagline: string; cautious: boolean };
+
+export type OnboardingState = {
+  done: boolean;
+  sessionId: string;
+  question?: OnboardingField;
+  progress?: { answered: number; total: number };
+  yogaLevel?: YogaLevel;
+};
 
 export type Pose = {
   id: string;

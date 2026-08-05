@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { api, RoutineResponse } from './src/api/client';
+import { api, RoutineResponse, YogaLevel } from './src/api/client';
 import { AuthProvider, useAuth } from './src/state/AuthContext';
 import AuthScreen from './src/screens/AuthScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import OnboardingResultScreen from './src/screens/OnboardingResultScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import SessionPlayerScreen from './src/screens/SessionPlayerScreen';
 import MeditationScreen from './src/screens/MeditationScreen';
@@ -18,6 +19,7 @@ type Screen = 'home' | 'session' | 'meditation' | 'progress' | 'social';
 function InnerApp() {
   const { token, loading } = useAuth();
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  const [pendingYogaLevel, setPendingYogaLevel] = useState<YogaLevel | null>(null);
   const [screen, setScreen] = useState<Screen>('home');
   const [activeRoutine, setActiveRoutine] = useState<RoutineResponse | null>(null);
 
@@ -50,7 +52,30 @@ function InnerApp() {
   }
 
   if (!onboardingCompleted) {
-    return <OnboardingScreen token={token} onComplete={() => setOnboardingCompleted(true)} />;
+    return (
+      <OnboardingScreen
+        token={token}
+        onComplete={(yogaLevel) => {
+          setOnboardingCompleted(true);
+          setPendingYogaLevel(yogaLevel || null);
+        }}
+      />
+    );
+  }
+
+  if (pendingYogaLevel) {
+    return (
+      <OnboardingResultScreen
+        token={token}
+        yogaLevel={pendingYogaLevel}
+        onStartClass={(routine) => {
+          setPendingYogaLevel(null);
+          setActiveRoutine(routine);
+          setScreen('session');
+        }}
+        onSkip={() => setPendingYogaLevel(null)}
+      />
+    );
   }
 
   if (screen === 'session' && activeRoutine) {

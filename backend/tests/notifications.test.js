@@ -1,6 +1,7 @@
 const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { computeSuggestions } = require('../src/services/notificationEngine');
+const { isWithinPreferredWindow } = require('../src/services/notificationService');
 const { startTestServer, call, uniqueEmail } = require('./util');
 const { completeOnboarding } = require('./fixtures');
 const pool = require('../src/db/pool');
@@ -129,6 +130,47 @@ test('POST /notifications/register-token then send-top finds the device but reje
   // this is the observable, network-free way to verify that filtering works.
   assert.equal(res.body.sent, false);
   assert.equal(res.body.pushResult.sent, 0);
+});
+
+test('isWithinPreferredWindow: gates the sweep to the user\'s preferred time of day', () => {
+  assert.equal(isWithinPreferredWindow('morning', 8), true);
+  assert.equal(isWithinPreferredWindow('morning', 16), false);
+  assert.equal(isWithinPreferredWindow('evening', 18), true);
+  assert.equal(isWithinPreferredWindow('varies', 3), true);
+  assert.equal(isWithinPreferredWindow(undefined, 3), true);
+});
+
+test('PATCH /notifications/preferences toggles reminders_enabled', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', {
+    body: { email: uniqueEmail('prefs'), password: 'password123' },
+  });
+  await completeOnboarding(server.baseUrl, signup.token);
+
+  const off = await call(server.baseUrl, 'PATCH', '/notifications/preferences', {
+    token: signup.token, body: { remindersEnabled: false },
+  });
+  assert.equal(off.status, 200);
+  assert.equal(off.body.remindersEnabled, false);
+
+  const { rows } = await pool.query('SELECT reminders_enabled FROM user_profiles WHERE user_id = $1', [signup.userId]);
+  assert.equal(rows[0].reminders_enabled, false);
+});
+
+test('PATCH /notifications/preferences rejects a non-boolean value', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', {
+    body: { email: uniqueEmail('prefsbad'), password: 'password123' },
+  });
+
+  const res = await call(server.baseUrl, 'PATCH', '/notifications/preferences', {
+    token: signup.token, body: { remindersEnabled: 'yes' },
+  });
+  assert.equal(res.status, 400);
 });
 
 test('POST /notifications/register-token is idempotent for the same token', async (t) => {

@@ -12,6 +12,14 @@ router.get('/suggestions', async (req, res) => {
   res.json({ suggestions });
 });
 
+router.patch('/preferences', async (req, res) => {
+  const { remindersEnabled } = req.body || {};
+  if (typeof remindersEnabled !== 'boolean') return res.status(400).json({ error: 'remindersEnabled must be a boolean' });
+
+  await pool.query('UPDATE user_profiles SET reminders_enabled = $1, updated_at = now() WHERE user_id = $2', [remindersEnabled, req.userId]);
+  res.json({ remindersEnabled });
+});
+
 router.post('/register-token', async (req, res) => {
   const { token, platform } = req.body || {};
   if (!token) return res.status(400).json({ error: 'token is required' });

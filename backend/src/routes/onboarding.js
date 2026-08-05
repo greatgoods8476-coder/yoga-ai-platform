@@ -2,6 +2,8 @@ const express = require('express');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { getNextQuestion, computeFollowUps, buildProfileUpdate } = require('../services/onboardingEngine');
+const { assessYogaLevel } = require('../services/levelAssessment');
+const { CORE_FIELDS } = require('../data/onboardingQuestions');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -20,10 +22,11 @@ async function getOrCreateSession(userId) {
   return rows[0];
 }
 
-function serializeQuestion(session, question) {
-  if (!question) return { done: true, sessionId: session.id };
+function serializeQuestion(session, question, extra = {}) {
+  if (!question) return { done: true, sessionId: session.id, ...extra };
   const { condition, ...publicFields } = question;
-  return { done: false, sessionId: session.id, question: publicFields };
+  const progress = { answered: Object.keys(session.answers || {}).length, total: CORE_FIELDS.length };
+  return { done: false, sessionId: session.id, question: publicFields, progress };
 }
 
 // pending_fields stores only keys; reconstruct full field defs for any queued follow-ups.
@@ -60,8 +63,10 @@ router.post('/answer', async (req, res) => {
     [answers, pendingFields, status, sessionId]
   );
 
+  let yogaLevel;
   if (status === 'completed') {
-    const profileUpdate = buildProfileUpdate(answers);
+    yogaLevel = assessYogaLevel(answers);
+    const profileUpdate = { ...buildProfileUpdate(answers), yoga_level: yogaLevel.level };
     const cols = Object.keys(profileUpdate);
     const setClause = cols.map((c, i) => `${c} = $${i + 2}`).join(', ');
     await pool.query(
@@ -70,7 +75,7 @@ router.post('/answer', async (req, res) => {
     );
   }
 
-  res.json(serializeQuestion(updated.rows[0], nextQuestion));
+  res.json(serializeQuestion(updated.rows[0], nextQuestion, { yogaLevel }));
 });
 
 router.get('/status', async (req, res) => {

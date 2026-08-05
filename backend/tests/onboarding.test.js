@@ -30,6 +30,59 @@ test('onboarding: full flow completes and persists profile fields', async (t) =>
   assert.ok(Array.isArray(profile.goals));
 });
 
+test('onboarding: each in-progress question carries answered/total progress', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', {
+    body: { email: uniqueEmail('progress'), password: 'password123' },
+  });
+
+  let { body: state } = await call(server.baseUrl, 'POST', '/onboarding/start', { token: signup.token });
+  assert.deepEqual(state.progress, { answered: 0, total: state.progress.total });
+  assert.ok(state.progress.total > 0);
+
+  ({ body: state } = await call(server.baseUrl, 'POST', '/onboarding/answer', {
+    token: signup.token, body: { sessionId: state.sessionId, field: state.question.key, value: DEFAULT_ANSWERS[state.question.key] },
+  }));
+  assert.equal(state.progress.answered, 1);
+});
+
+test('onboarding: completion returns a yogaLevel and persists it on the profile', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', {
+    body: { email: uniqueEmail('level'), password: 'password123' },
+  });
+
+  const finalState = await completeOnboarding(server.baseUrl, signup.token, {
+    yoga_experience: 'none', fitness_level: 'beginner', current_flexibility: 'poor', current_mobility: 'limited',
+  });
+  assert.equal(finalState.done, true);
+  assert.equal(finalState.yogaLevel.level, 'rooted_beginner');
+  assert.equal(finalState.yogaLevel.cautious, false);
+
+  const { rows } = await pool.query('SELECT yoga_level FROM user_profiles WHERE user_id = $1', [signup.userId]);
+  assert.equal(rows[0].yoga_level, 'rooted_beginner');
+});
+
+test('onboarding: current pain/injury caps the level at rooted_beginner even for an experienced profile', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', {
+    body: { email: uniqueEmail('cautious'), password: 'password123' },
+  });
+
+  const finalState = await completeOnboarding(server.baseUrl, signup.token, {
+    yoga_experience: 'advanced', fitness_level: 'athlete', current_flexibility: 'excellent', current_mobility: 'excellent',
+    current_injuries: ['knee'], knee_pain: 4,
+  });
+  assert.equal(finalState.yogaLevel.level, 'rooted_beginner');
+  assert.equal(finalState.yogaLevel.cautious, true);
+});
+
 test('onboarding: injury follow-up question is injected dynamically', async (t) => {
   const server = await startTestServer();
   t.after(() => server.close());
