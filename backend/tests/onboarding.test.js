@@ -30,6 +30,50 @@ test('onboarding: full flow completes and persists profile fields', async (t) =>
   assert.ok(Array.isArray(profile.goals));
 });
 
+test('onboarding: reporting a sport unlocks position/season/goal follow-ups and persists them', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', {
+    body: { email: uniqueEmail('athlete'), password: 'password123' },
+  });
+
+  const finalState = await completeOnboarding(server.baseUrl, signup.token, {
+    sport: 'basketball', athletic_position: 'guard', season_phase: 'in_season', primary_athletic_goal: 'build_strength',
+  });
+  assert.equal(finalState.done, true);
+
+  const { rows } = await pool.query('SELECT sport, athletic_position, season_phase, primary_athletic_goal FROM user_profiles WHERE user_id = $1', [signup.userId]);
+  assert.equal(rows[0].sport, 'basketball');
+  assert.equal(rows[0].athletic_position, 'guard');
+  assert.equal(rows[0].season_phase, 'in_season');
+  assert.equal(rows[0].primary_athletic_goal, 'build_strength');
+});
+
+test('onboarding: sport "none" skips position/season/goal follow-ups entirely', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', {
+    body: { email: uniqueEmail('nonathlete'), password: 'password123' },
+  });
+
+  let { body: state } = await call(server.baseUrl, 'POST', '/onboarding/start', { token: signup.token });
+  const seenKeys = [];
+  while (state.question) {
+    seenKeys.push(state.question.key);
+    const key = state.question.key;
+    const value = DEFAULT_ANSWERS[key] ?? 'n/a';
+    ({ body: state } = await call(server.baseUrl, 'POST', '/onboarding/answer', {
+      token: signup.token, body: { sessionId: state.sessionId, field: key, value },
+    }));
+  }
+
+  assert.ok(!seenKeys.includes('athletic_position'));
+  assert.ok(!seenKeys.includes('season_phase'));
+  assert.ok(!seenKeys.includes('primary_athletic_goal'));
+});
+
 test('onboarding: each in-progress question carries answered/total progress', async (t) => {
   const server = await startTestServer();
   t.after(() => server.close());

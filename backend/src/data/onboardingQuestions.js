@@ -24,6 +24,21 @@ const CORE_FIELDS = [
     key: 'daily_activity_level', prompt: 'Outside of workouts, how active is your day-to-day?', type: 'single_select',
     options: ['sedentary', 'lightly_active', 'active', 'very_active'],
   },
+  { key: 'sport', prompt: "What sport do you play? (Say 'none' if this doesn't apply to you.)", type: 'text' },
+  {
+    key: 'athletic_position', prompt: "What position or event? (Say 'n/a' if not applicable.)", type: 'text',
+    condition: (a) => a.sport && a.sport.toLowerCase() !== 'none',
+  },
+  {
+    key: 'season_phase', prompt: 'Where are you in your season right now?', type: 'single_select',
+    options: ['preseason', 'in_season', 'postseason', 'offseason'],
+    condition: (a) => a.sport && a.sport.toLowerCase() !== 'none',
+  },
+  {
+    key: 'primary_athletic_goal', prompt: "What's the main thing you want yoga to do for your training?", type: 'single_select',
+    options: ['build_strength', 'explosiveness', 'injury_prevention', 'inseason_recovery', 'mobility_for_sport'],
+    condition: (a) => a.sport && a.sport.toLowerCase() !== 'none',
+  },
   {
     key: 'current_flexibility', prompt: 'Be honest — how flexible are you right now?', type: 'single_select',
     options: ['poor', 'fair', 'good', 'excellent'],

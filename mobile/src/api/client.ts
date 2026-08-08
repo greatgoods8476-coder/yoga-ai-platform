@@ -86,6 +86,11 @@ export const api = {
   getAvatar: (token: string) => request<{ avatarPreference: AvatarPreference }>('GET', '/profile/avatar', { token }),
   saveAvatar: (token: string, avatarUrl: string) =>
     request<{ avatarPreference: AvatarPreference }>('PATCH', '/profile/avatar', { token, body: { avatarUrl } }),
+
+  myOrgs: (token: string) => request<{ organizations: OrgMembership[] }>('GET', '/orgs/mine', { token }),
+  roster: (token: string, orgId: string) => request<{ roster: RosterAthlete[] }>('GET', `/orgs/${orgId}/roster`, { token }),
+  athleteDetail: (token: string, orgId: string, userId: string) =>
+    request<AthleteDetail>('GET', `/orgs/${orgId}/athletes/${userId}`, { token }),
 };
 
 export type NotificationSuggestion = {
@@ -184,4 +189,38 @@ export type ProgressDashboard = {
   days: ProgressDay[];
   currentStreak: number;
   totals: { workoutMinutes: number; meditationMinutes: number };
+};
+
+export type OrgMembership = { id: string; name: string; role: 'coach' | 'athlete'; athlete_count: number; created_at: string };
+
+export type RosterAthlete = {
+  user_id: string;
+  email: string;
+  display_name: string | null;
+  sport: string | null;
+  athletic_position: string | null;
+  season_phase: string | null;
+  primary_athletic_goal: string | null;
+  yoga_level: string | null;
+  onboarding_completed: boolean;
+};
+
+export type AthleteDetail = {
+  profile: {
+    email: string;
+    display_name: string | null;
+    sport: string | null;
+    athletic_position: string | null;
+    season_phase: string | null;
+    primary_athletic_goal: string | null;
+    yoga_level: string | null;
+    fitness_level: string | null;
+    yoga_experience: string | null;
+    current_flexibility: string | null;
+    current_mobility: string | null;
+    current_injuries: string[];
+    joint_pain: Record<string, number>;
+    goals: string[];
+  };
+  latestRoutine: RoutineResponse | null;
 };

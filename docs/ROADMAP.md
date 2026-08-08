@@ -70,7 +70,7 @@ bullet above and the relevant `.env.example` / README section.
 - [ ] Reference-pose angle authoring pipeline (`poses.pose_reference_angles`)
 
 ## Phase 4 — Avatar & environments
-- [ ] 3D avatar rendering pipeline + avatar customization
+- [x] 3D avatar rendering + customization (see Phase 4 (partial) above)
 - [ ] Voice synthesis + coaching personality selection
 - [ ] Immersive environments (visuals + ambient audio mixer)
 
@@ -79,3 +79,27 @@ bullet above and the relevant `.env.example` / README section.
 - [ ] Music service OAuth integrations
 - [ ] Instructor marketplace, live classes
 - [ ] Premium billing/entitlements
+
+## Phase 6 — Athletic programs (B2B2C pivot)
+- [x] Org/coach/athlete data model (`organizations`, `org_memberships`) — a
+      coach owns an organization and sees only that organization's athletes;
+      row-level checks enforce a non-coach (or a coach of a different org)
+      can't read another program's roster
+- [x] Athletic identity in onboarding — sport, position, season phase, and
+      primary training goal, conditionally asked only when a sport is
+      reported (the general consumer onboarding is unaffected)
+- [x] Strength-building yoga routing — primary training goal maps to an
+      existing strength/power/recovery/mobility routine type
+      (`data/routineTypes.js` already had these; no new pose-scoring logic
+      needed)
+- [x] Coach dashboard (mobile app, works on web via `react-native-web`):
+      roster list + per-athlete questionnaire results and latest AI-generated
+      training. Coach accounts skip athlete onboarding entirely.
+- [x] Demo data generator (`seedDemoAthletes.js`) — 12 simulated athletes
+      through the real signup/onboarding/level-assessment/routine-generation
+      pipeline, for sales demos
+- [ ] Self-serve org creation / athlete enrollment (invite code, roster
+      import) — currently a coach only gets an org via the seed script or a
+      direct `POST /orgs` call; no UI for it yet
+- [ ] Seat/roster-based billing for programs — deferred pending a pricing
+      model decision (seat-based vs. flat program license)

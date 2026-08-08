@@ -13,6 +13,7 @@ const progressRoutes = require('./routes/progress');
 const notificationRoutes = require('./routes/notifications');
 const socialRoutes = require('./routes/social');
 const profileRoutes = require('./routes/profile');
+const orgRoutes = require('./routes/orgs');
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -39,6 +40,7 @@ function createApp() {
   app.use('/notifications', notificationRoutes);
   app.use('/social', socialRoutes);
   app.use('/profile', profileRoutes);
+  app.use('/orgs', orgRoutes);
 
   app.use((err, req, res, next) => {
     console.error(err);

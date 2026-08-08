@@ -97,6 +97,50 @@ to `PATCH /profile/avatar` (`user_profiles.avatar_preference.avatarUrl`), and
 renders it back with Google's `<model-viewer>` web component (also loaded in a
 `WebView`, so no native 3D engine/linking is needed — works in Expo Go).
 
+### Coach dashboard (athletic programs)
+
+The product now also serves strength coaches at college athletic programs, not
+just individual users. A coach owns an `organization` (`backend/src/routes/orgs.js`)
+and sees a roster of athletes — their onboarding questionnaire results
+(sport, position, season phase, training goal), computed practice level, and
+latest AI-generated training — instead of the athlete-facing onboarding/home
+flow. The mobile app auto-detects this: on login, `App.tsx` checks
+`GET /orgs/mine` and routes coach accounts straight to
+`CoachDashboardScreen`/`CoachAthleteDetailScreen`, skipping the athlete
+questionnaire entirely.
+
+Athletic identity is now part of onboarding too: reporting a sport (anything
+but "none") unlocks position, season phase, and primary training goal
+questions (`build_strength`, `explosiveness`, `injury_prevention`,
+`inseason_recovery`, or `mobility_for_sport`). That goal maps to an existing
+strength-oriented routine type (`strength_yoga`, `power_yoga`,
+`athlete_recovery`, `hip_mobility`) already present in
+`data/routineTypes.js` — no new pose-scoring logic was needed, the routine
+generator already supported strength/core/balance-focused sessions.
+
+**There's currently no self-serve "create your program" UI** — a user becomes
+a coach only by creating an organization (`POST /orgs`), which the demo seed
+script below does for you. Real enrollment (invite codes, roster import) is
+explicitly out of scope for this pass; athletes are added directly.
+
+**Demo data**: `backend/src/db/seedDemoAthletes.js` populates a coach's
+roster with 12 simulated athletes across basketball, football, soccer,
+track, volleyball, swimming, and baseball — each one goes through the real
+signup, onboarding-completion, level-assessment, and routine-generation code
+paths (not fabricated data), so the dashboard shows exactly what a real
+athlete's account would produce, including two athletes seeded with a
+current injury to demonstrate the safety-capped level assessment.
+
+```bash
+# 1. Sign up as the coach through the app (or curl /auth/signup) first.
+# 2. Then, from backend/:
+npm run seed:demo -- coach@example.com "State University Athletics"
+```
+
+All seeded athletes share the password `DemoAthlete123!` (see the script for
+the exact roster) — useful if you want to log in as one to see the athlete
+side too.
+
 **Real caveat:** this integration was built to Ready Player Me's documented
 API but could not be exercised end-to-end from the sandbox this was built in
 — its domains are blocked by that environment's outbound network policy (the

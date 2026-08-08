@@ -4,6 +4,7 @@ const DEFAULT_ANSWERS = {
   age: 30, height_cm: 165, weight_kg: 60, gender: 'female',
   fitness_level: 'beginner', yoga_experience: 'none',
   occupation: 'teacher', daily_activity_level: 'lightly_active',
+  sport: 'none',
   current_flexibility: 'fair', current_mobility: 'moderate',
   medical_conditions: ['none'], past_injuries: ['none'], current_injuries: ['none'],
   back_pain: 0, neck_pain: 0, hip_pain: 0, knee_pain: 0,

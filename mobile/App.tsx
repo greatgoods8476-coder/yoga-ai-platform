@@ -12,13 +12,17 @@ import MeditationScreen from './src/screens/MeditationScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import SocialScreen from './src/screens/SocialScreen';
 import AvatarScreen from './src/screens/AvatarScreen';
+import CoachDashboardScreen from './src/screens/CoachDashboardScreen';
+import CoachAthleteDetailScreen from './src/screens/CoachAthleteDetailScreen';
 import { useRegisterPushToken } from './src/hooks/usePushNotifications';
 import { theme } from './src/theme';
 
 type Screen = 'home' | 'session' | 'meditation' | 'progress' | 'social' | 'avatar';
 
 function InnerApp() {
-  const { token, loading } = useAuth();
+  const { token, loading, logout } = useAuth();
+  const [isCoach, setIsCoach] = useState<boolean | null>(null);
+  const [selectedAthlete, setSelectedAthlete] = useState<{ orgId: string; userId: string } | null>(null);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [pendingYogaLevel, setPendingYogaLevel] = useState<YogaLevel | null>(null);
   const [screen, setScreen] = useState<Screen>('home');
@@ -28,9 +32,11 @@ function InnerApp() {
 
   useEffect(() => {
     if (!token) {
+      setIsCoach(null);
       setOnboardingCompleted(null);
       return;
     }
+    api.myOrgs(token).then((r) => setIsCoach(r.organizations.some((o) => o.role === 'coach')));
     api.onboardingStatus(token).then((r) => setOnboardingCompleted(r.onboardingCompleted));
   }, [token]);
 
@@ -44,11 +50,33 @@ function InnerApp() {
 
   if (!token) return <AuthScreen />;
 
-  if (onboardingCompleted === null) {
+  if (isCoach === null || onboardingCompleted === null) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background }}>
         <ActivityIndicator color={theme.colors.primary} />
       </View>
+    );
+  }
+
+  // Coach accounts skip athlete onboarding entirely -- they get the roster
+  // dashboard, not the practice questionnaire.
+  if (isCoach) {
+    if (selectedAthlete) {
+      return (
+        <CoachAthleteDetailScreen
+          token={token}
+          orgId={selectedAthlete.orgId}
+          userId={selectedAthlete.userId}
+          onBack={() => setSelectedAthlete(null)}
+        />
+      );
+    }
+    return (
+      <CoachDashboardScreen
+        token={token}
+        onSelectAthlete={(orgId, userId) => setSelectedAthlete({ orgId, userId })}
+        onLogout={logout}
+      />
     );
   }
 
