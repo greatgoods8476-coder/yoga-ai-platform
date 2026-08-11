@@ -101,5 +101,30 @@ bullet above and the relevant `.env.example` / README section.
 - [ ] Self-serve org creation / athlete enrollment (invite code, roster
       import) — currently a coach only gets an org via the seed script or a
       direct `POST /orgs` call; no UI for it yet
+- [x] Monthly training plans — a ~30-day calendar scheduled on the athlete's
+      actual reported available days (not a guessed pattern), each day's
+      routine generated lazily so it reflects same-day check-ins
+- [x] Daily check-ins — soreness reports feed straight into the existing
+      adaptation engine (`applyFeedback`), reusing its soreness-penalty
+      scoring rather than a second parallel system
+- [x] Open-ended, fill-in-the-blank onboarding — free-text answers parsed by
+      an LLM into the same structured values the rest of the app already
+      relies on, with strict validation (an answer the model can't
+      confidently map is rejected and re-asked, never silently guessed).
+      Requires `ANTHROPIC_API_KEY`; falls back to the existing multiple-
+      choice/scale UI with no regression when unset (`aiModeEnabled` flag
+      from `/onboarding/start`)
+- [ ] AI video mobility test — deferred. A real video-analysis tool is
+      available and could produce a genuine qualitative movement assessment
+      (form/asymmetry description), but precise numeric range-of-motion
+      tracking (what "gauge if they got stronger" implies) needs a dedicated
+      pose-estimation pipeline — see Phase 3. Not started; needs a scoping
+      decision on which version to build before any work begins.
+- [ ] Monthly retest + rank up/down cycle — depends on the video mobility
+      test above. Note: the underlying difficulty-adjustment mechanism
+      already exists (`adaptation_state.difficultyTrend`, used by
+      `targetDifficulty()`), so a new plan already reflects session-feedback-
+      driven trends today; a video-based comparison would be additive to
+      that, not a replacement.
 - [ ] Seat/roster-based billing for programs — deferred pending a pricing
       model decision (seat-based vs. flat program license)

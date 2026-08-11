@@ -42,6 +42,8 @@ export const api = {
     request<OnboardingState>('POST', '/onboarding/start', { token }),
   onboardingAnswer: (token: string, sessionId: string, field: string, value: unknown) =>
     request<OnboardingState>('POST', '/onboarding/answer', { token, body: { sessionId, field, value } }),
+  onboardingAnswerFreeText: (token: string, sessionId: string, field: string, freeText: string) =>
+    request<OnboardingState>('POST', '/onboarding/answer', { token, body: { sessionId, field, freeText } }),
   onboardingStatus: (token: string) =>
     request<{ onboardingCompleted: boolean }>('GET', '/onboarding/status', { token }),
 
@@ -135,6 +137,7 @@ export type OnboardingState = {
   question?: OnboardingField;
   progress?: { answered: number; total: number };
   yogaLevel?: YogaLevel;
+  aiModeEnabled?: boolean;
 };
 
 export type Pose = {

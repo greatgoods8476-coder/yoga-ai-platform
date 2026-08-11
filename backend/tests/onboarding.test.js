@@ -6,6 +6,55 @@ const pool = require('../src/db/pool');
 
 after(() => pool.end());
 
+test('onboarding: aiModeEnabled reflects whether an LLM is configured (false in test env)', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', { body: { email: uniqueEmail('aimode'), password: 'password123' } });
+  const { body: state } = await call(server.baseUrl, 'POST', '/onboarding/start', { token: signup.token });
+  assert.equal(state.aiModeEnabled, false);
+});
+
+test('onboarding: freeText answers work for text fields without any LLM configured', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', { body: { email: uniqueEmail('freetext'), password: 'password123' } });
+  let { body: state } = await call(server.baseUrl, 'POST', '/onboarding/start', { token: signup.token });
+  while (state.question.key !== 'occupation') {
+    ({ body: state } = await call(server.baseUrl, 'POST', '/onboarding/answer', {
+      token: signup.token, body: { sessionId: state.sessionId, field: state.question.key, value: DEFAULT_ANSWERS[state.question.key] ?? 'n/a' },
+    }));
+  }
+
+  const res = await call(server.baseUrl, 'POST', '/onboarding/answer', {
+    token: signup.token, body: { sessionId: state.sessionId, field: 'occupation', freeText: 'I coach club volleyball' },
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.question.key !== 'occupation', true);
+
+  const { rows } = await pool.query(
+    "SELECT answers FROM onboarding_sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1",
+    [signup.userId]
+  );
+  assert.equal(rows[0].answers.occupation, 'I coach club volleyball');
+});
+
+test('onboarding: freeText for a select/scale field is rejected with 409 when no LLM is configured', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const { body: signup } = await call(server.baseUrl, 'POST', '/auth/signup', { body: { email: uniqueEmail('freetextnoai'), password: 'password123' } });
+  const { body: state } = await call(server.baseUrl, 'POST', '/onboarding/start', { token: signup.token });
+  assert.equal(state.question.key, 'age'); // number type, but let's target a select field explicitly below
+
+  const res = await call(server.baseUrl, 'POST', '/onboarding/answer', {
+    token: signup.token, body: { sessionId: state.sessionId, field: 'age', freeText: 'twenty-five' },
+  });
+  assert.equal(res.status, 409);
+  assert.equal(res.body.error, 'AI answer parsing is not configured on this server');
+});
+
 test('onboarding: full flow completes and persists profile fields', async (t) => {
   const server = await startTestServer();
   t.after(() => server.close());

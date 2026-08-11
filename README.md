@@ -32,6 +32,17 @@ via `backend/src/services/llmClient.js` — everything works without it, this
 just adds session-to-session script variety on top of the built-in templates
 once set. No code changes needed, just set the env var.
 
+The same key also unlocks **open-ended onboarding**: instead of tapping
+multiple-choice options, users type a free-text answer and
+`backend/src/services/answerParser.js` maps it onto the exact structured
+value the rest of the app relies on (e.g. "pretty fit, I lift 5x a week" →
+`fitness_level: advanced`). It never guesses — an answer it can't confidently
+map is rejected and re-asked rather than silently stored wrong, since some of
+these fields (injury/pain severity) gate which poses are safe to suggest.
+`GET/POST /onboarding/*` responses carry an `aiModeEnabled` flag so the
+mobile client falls back to the original multiple-choice/scale UI with zero
+behavior change when no key is set.
+
 ### Deploying the backend (Railway)
 
 `backend/railway.toml` is ready to go, mirroring the setup used for the

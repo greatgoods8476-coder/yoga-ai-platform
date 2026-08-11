@@ -3,6 +3,8 @@ const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { getNextQuestion, computeFollowUps, buildProfileUpdate } = require('../services/onboardingEngine');
 const { assessYogaLevel } = require('../services/levelAssessment');
+const { parseOpenEndedAnswer } = require('../services/answerParser');
+const { isAvailable: llmAvailable } = require('../services/llmClient');
 const { CORE_FIELDS } = require('../data/onboardingQuestions');
 
 const router = express.Router();
@@ -26,7 +28,7 @@ function serializeQuestion(session, question, extra = {}) {
   if (!question) return { done: true, sessionId: session.id, ...extra };
   const { condition, ...publicFields } = question;
   const progress = { answered: Object.keys(session.answers || {}).length, total: CORE_FIELDS.length };
-  return { done: false, sessionId: session.id, question: publicFields, progress };
+  return { done: false, sessionId: session.id, question: publicFields, progress, aiModeEnabled: llmAvailable() };
 }
 
 // pending_fields stores only keys; reconstruct full field defs for any queued follow-ups.
@@ -36,6 +38,10 @@ function extraFieldsFromKeys(keys) {
   return (keys || []).map((k) => byKey.get(k)).filter(Boolean);
 }
 
+function findFieldDef(key, extraFields) {
+  return CORE_FIELDS.find((f) => f.key === key) || extraFields.find((f) => f.key === key) || null;
+}
+
 router.post('/start', async (req, res) => {
   const session = await getOrCreateSession(req.userId);
   const question = getNextQuestion(session.answers, extraFieldsFromKeys(session.pending_fields));
@@ -43,14 +49,31 @@ router.post('/start', async (req, res) => {
 });
 
 router.post('/answer', async (req, res) => {
-  const { sessionId, field, value } = req.body || {};
+  const { sessionId, field, value, freeText } = req.body || {};
   if (!sessionId || !field) return res.status(400).json({ error: 'sessionId and field are required' });
 
   const { rows } = await pool.query('SELECT * FROM onboarding_sessions WHERE id = $1 AND user_id = $2', [sessionId, req.userId]);
   if (rows.length === 0) return res.status(404).json({ error: 'onboarding session not found' });
   const session = rows[0];
 
-  const answers = { ...session.answers, [field]: value };
+  let resolvedValue = value;
+  if (freeText !== undefined) {
+    const extraFieldsForLookup = extraFieldsFromKeys(session.pending_fields);
+    const fieldDef = findFieldDef(field, extraFieldsForLookup);
+    if (!fieldDef) return res.status(400).json({ error: 'unknown field' });
+
+    const parsed = await parseOpenEndedAnswer(fieldDef, freeText);
+    if (parsed.unavailable) return res.status(409).json({ error: 'AI answer parsing is not configured on this server' });
+    if (parsed.value === null) {
+      return res.status(422).json({
+        error: 'could_not_parse',
+        message: "I couldn't quite catch that — could you say it a different way?",
+      });
+    }
+    resolvedValue = parsed.value;
+  }
+
+  const answers = { ...session.answers, [field]: resolvedValue };
   let extraFields = extraFieldsFromKeys(session.pending_fields);
   extraFields = computeFollowUps(answers, extraFields);
   const pendingFields = extraFields.map((f) => f.key);

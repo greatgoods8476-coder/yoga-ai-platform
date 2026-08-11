@@ -1,14 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { api, OnboardingField, YogaLevel } from '../api/client';
+import { api, ApiError, OnboardingField, YogaLevel } from '../api/client';
 import { theme } from '../theme';
+
+const OPEN_ENDED_TYPES = new Set(['single_select', 'multi_select', 'scale']);
+
+function answerHint(question: OnboardingField): string | null {
+  if (question.type === 'single_select' || question.type === 'multi_select') {
+    return `e.g. ${(question.options || []).slice(0, 4).join(', ')}${(question.options || []).length > 4 ? ', ...' : ''}`;
+  }
+  if (question.type === 'scale' || question.type === 'number') {
+    return question.min !== undefined ? `A number between ${question.min} and ${question.max}` : null;
+  }
+  return null;
+}
 
 export default function OnboardingScreen({ token, onComplete }: { token: string; onComplete: (yogaLevel?: YogaLevel) => void }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [question, setQuestion] = useState<OnboardingField | null>(null);
   const [progress, setProgress] = useState<{ answered: number; total: number } | null>(null);
+  const [aiModeEnabled, setAiModeEnabled] = useState(false);
   const [textValue, setTextValue] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -18,6 +32,7 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
       setSessionId(state.sessionId);
       setQuestion(state.question || null);
       setProgress(state.progress || null);
+      setAiModeEnabled(!!state.aiModeEnabled);
       setLoading(false);
     });
   }, []);
@@ -25,6 +40,7 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
   function resetInputs() {
     setTextValue('');
     setSelected([]);
+    setParseError(null);
   }
 
   async function submitAnswer(value: unknown) {
@@ -36,6 +52,27 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
       if (state.done) return onComplete(state.yogaLevel);
       setQuestion(state.question || null);
       setProgress(state.progress || null);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function submitFreeTextAnswer() {
+    if (!sessionId || !question || !textValue.trim()) return;
+    setSubmitting(true);
+    setParseError(null);
+    try {
+      const state = await api.onboardingAnswerFreeText(token, sessionId, question.key, textValue.trim());
+      resetInputs();
+      if (state.done) return onComplete(state.yogaLevel);
+      setQuestion(state.question || null);
+      setProgress(state.progress || null);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 422) {
+        setParseError("I couldn't quite catch that — could you say it a different way?");
+      } else {
+        setParseError('Something went wrong — please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -58,6 +95,8 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
   }
 
   const progressPct = progress && progress.total > 0 ? Math.min(1, progress.answered / progress.total) : 0;
+  const useFreeText = aiModeEnabled && OPEN_ENDED_TYPES.has(question.type);
+  const hint = answerHint(question);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -94,7 +133,22 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
         />
       )}
 
-      {question.type === 'scale' && (
+      {useFreeText && (
+        <>
+          <TextInput
+            style={styles.input}
+            value={textValue}
+            onChangeText={setTextValue}
+            placeholder="Type your answer in your own words..."
+            placeholderTextColor={theme.colors.textMuted}
+            multiline
+          />
+          {hint && <Text style={styles.hint}>{hint}</Text>}
+          {parseError && <Text style={styles.parseError}>{parseError}</Text>}
+        </>
+      )}
+
+      {!useFreeText && question.type === 'scale' && (
         <View style={styles.optionsRow}>
           {Array.from({ length: (question.max ?? 5) - (question.min ?? 0) + 1 }, (_, i) => (question.min ?? 0) + i).map((n) => (
             <Pressable key={n} style={styles.scaleChip} onPress={() => submitAnswer(n)}>
@@ -104,7 +158,7 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
         </View>
       )}
 
-      {(question.type === 'single_select' || question.type === 'multi_select') && (
+      {!useFreeText && (question.type === 'single_select' || question.type === 'multi_select') && (
         <View style={styles.optionsColumn}>
           {(question.options || []).map((opt) => {
             const isSelected = selected.includes(opt);
@@ -123,7 +177,13 @@ export default function OnboardingScreen({ token, onComplete }: { token: string;
         </View>
       )}
 
-      {(question.type === 'number' || question.type === 'text' || question.type === 'multi_text' || question.type === 'multi_select') && (
+      {useFreeText && (
+        <Pressable style={styles.button} disabled={submitting || !textValue.trim()} onPress={submitFreeTextAnswer}>
+          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Next</Text>}
+        </Pressable>
+      )}
+
+      {!useFreeText && (question.type === 'number' || question.type === 'text' || question.type === 'multi_text' || question.type === 'multi_select') && (
         <Pressable
           style={styles.button}
           disabled={submitting}
@@ -153,6 +213,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border,
     borderRadius: theme.radius, padding: theme.spacing(2), fontSize: 16, marginBottom: theme.spacing(2),
   },
+  hint: { color: theme.colors.textMuted, fontSize: 12, marginTop: -theme.spacing(1), marginBottom: theme.spacing(2) },
+  parseError: { color: theme.colors.danger, fontSize: 13, marginBottom: theme.spacing(2) },
   optionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing(1), marginBottom: theme.spacing(2) },
   optionsColumn: { gap: theme.spacing(1), marginBottom: theme.spacing(2) },
   scaleChip: {
