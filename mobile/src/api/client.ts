@@ -91,6 +91,17 @@ export const api = {
   roster: (token: string, orgId: string) => request<{ roster: RosterAthlete[] }>('GET', `/orgs/${orgId}/roster`, { token }),
   athleteDetail: (token: string, orgId: string, userId: string) =>
     request<AthleteDetail>('GET', `/orgs/${orgId}/athletes/${userId}`, { token }),
+
+  generatePlan: (token: string, routineType?: string) =>
+    request<{ plan: TrainingPlan; days: TrainingPlanDay[] }>('POST', '/plans/generate', { token, body: { routineType } }),
+  currentPlan: (token: string) => request<{ plan: TrainingPlan | null; days: TrainingPlanDay[] }>('GET', '/plans/current', { token }),
+  generatePlanDayRoutine: (token: string, dayId: string) =>
+    request<RoutineResponse>('POST', `/plans/days/${dayId}/generate-routine`, { token }),
+  linkPlanDaySession: (token: string, dayId: string, sessionLogId: string) =>
+    request<{ day: TrainingPlanDay }>('POST', `/plans/days/${dayId}/link-session`, { token, body: { sessionLogId } }),
+  submitCheckin: (token: string, soreness: Record<string, number>, notes?: string) =>
+    request<{ checkin: DailyCheckin; adaptationState: unknown }>('POST', '/plans/checkins', { token, body: { soreness, notes } }),
+  checkins: (token: string) => request<{ checkins: DailyCheckin[] }>('GET', '/plans/checkins', { token }),
 };
 
 export type NotificationSuggestion = {
@@ -223,4 +234,29 @@ export type AthleteDetail = {
     goals: string[];
   };
   latestRoutine: RoutineResponse | null;
+};
+
+export type TrainingPlan = {
+  id: string;
+  routine_type: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  created_at: string;
+};
+
+export type TrainingPlanDay = {
+  id: string;
+  plan_id: string;
+  scheduled_date: string;
+  routine_id: string | null;
+  session_log_id: string | null;
+  status: 'pending' | 'completed';
+};
+
+export type DailyCheckin = {
+  id: string;
+  checkin_date: string;
+  soreness: Record<string, number>;
+  notes: string | null;
 };

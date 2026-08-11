@@ -72,6 +72,11 @@ const CORE_FIELDS = [
     options: ['mat', 'blocks', 'strap', 'bolster', 'wall', 'chair', 'none'],
   },
   { key: 'workout_days_per_week', prompt: "Realistically, how many days a week do you want to practice?", type: 'number', min: 1, max: 7 },
+  {
+    key: 'available_days', prompt: 'Which specific days actually work for you? (Pick as many as you need — this is what your monthly plan gets scheduled around.)',
+    type: 'multi_select',
+    options: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+  },
   { key: 'session_length_min', prompt: 'How many minutes do you usually have to spare per session?', type: 'number', min: 5, max: 90 },
   {
     key: 'preferred_time', prompt: 'When do you like to practice?', type: 'single_select',

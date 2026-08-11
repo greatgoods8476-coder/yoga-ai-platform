@@ -10,7 +10,7 @@ export default function SessionPlayerScreen({
 }: {
   token: string;
   routine: RoutineResponse;
-  onFinish: () => void;
+  onFinish: (sessionLogId: string | null) => void;
 }) {
   const [sessionLogId, setSessionLogId] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
@@ -126,7 +126,7 @@ export default function SessionPlayerScreen({
       <View style={styles.container}>
         <Text style={styles.title}>Nicely done.</Text>
         <Text style={styles.subtitle}>Your practice is logged and your next session will adapt to how this one felt.</Text>
-        <Pressable style={styles.primaryButton} onPress={onFinish}>
+        <Pressable style={styles.primaryButton} onPress={() => onFinish(sessionLogId)}>
           <Text style={styles.primaryButtonText}>Back to home</Text>
         </Pressable>
       </View>

@@ -21,7 +21,7 @@ export default function HomeScreen({
 }: {
   token: string;
   onStartSession: (routine: RoutineResponse) => void;
-  onNavigate: (screen: 'progress' | 'meditation' | 'social' | 'avatar') => void;
+  onNavigate: (screen: 'progress' | 'meditation' | 'social' | 'avatar' | 'plan') => void;
   onLogout: () => void;
 }) {
   const [generating, setGenerating] = useState<string | null>(null);
@@ -69,6 +69,7 @@ export default function HomeScreen({
       </View>
 
       <View style={styles.footerLinks}>
+        <Pressable onPress={() => onNavigate('plan')}><Text style={styles.link}>My Plan</Text></Pressable>
         <Pressable onPress={() => onNavigate('meditation')}><Text style={styles.link}>Meditation</Text></Pressable>
         <Pressable onPress={() => onNavigate('progress')}><Text style={styles.link}>Progress</Text></Pressable>
         <Pressable onPress={() => onNavigate('social')}><Text style={styles.link}>Friends</Text></Pressable>

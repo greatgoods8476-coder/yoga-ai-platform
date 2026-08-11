@@ -14,10 +14,11 @@ import SocialScreen from './src/screens/SocialScreen';
 import AvatarScreen from './src/screens/AvatarScreen';
 import CoachDashboardScreen from './src/screens/CoachDashboardScreen';
 import CoachAthleteDetailScreen from './src/screens/CoachAthleteDetailScreen';
+import PlanScreen from './src/screens/PlanScreen';
 import { useRegisterPushToken } from './src/hooks/usePushNotifications';
 import { theme } from './src/theme';
 
-type Screen = 'home' | 'session' | 'meditation' | 'progress' | 'social' | 'avatar';
+type Screen = 'home' | 'session' | 'meditation' | 'progress' | 'social' | 'avatar' | 'plan';
 
 function InnerApp() {
   const { token, loading, logout } = useAuth();
@@ -27,6 +28,7 @@ function InnerApp() {
   const [pendingYogaLevel, setPendingYogaLevel] = useState<YogaLevel | null>(null);
   const [screen, setScreen] = useState<Screen>('home');
   const [activeRoutine, setActiveRoutine] = useState<RoutineResponse | null>(null);
+  const [activePlanDayId, setActivePlanDayId] = useState<string | null>(null);
 
   useRegisterPushToken(token);
 
@@ -112,9 +114,16 @@ function InnerApp() {
       <SessionPlayerScreen
         token={token}
         routine={activeRoutine}
-        onFinish={() => {
+        onFinish={(sessionLogId) => {
+          const dayId = activePlanDayId;
           setActiveRoutine(null);
-          setScreen('home');
+          setActivePlanDayId(null);
+          if (dayId && sessionLogId) {
+            api.linkPlanDaySession(token, dayId, sessionLogId).catch(() => {});
+            setScreen('plan');
+          } else {
+            setScreen('home');
+          }
         }}
       />
     );
@@ -134,6 +143,20 @@ function InnerApp() {
 
   if (screen === 'avatar') {
     return <AvatarScreen token={token} onBack={() => setScreen('home')} />;
+  }
+
+  if (screen === 'plan') {
+    return (
+      <PlanScreen
+        token={token}
+        onStartDay={(dayId, routine) => {
+          setActivePlanDayId(dayId);
+          setActiveRoutine(routine);
+          setScreen('session');
+        }}
+        onBack={() => setScreen('home')}
+      />
+    );
   }
 
   return (

@@ -82,6 +82,7 @@ function buildProfileUpdate(answers) {
       sessionLengthMin: toIntOrNull(answers.session_length_min),
       preferredTime: answers.preferred_time ?? null,
     },
+    available_days: toArray(answers.available_days),
     goals: toArray(answers.goals),
     favorite_music_genres: toArray(answers.favorite_music_genres),
     preferred_coaching_style: answers.preferred_coaching_style ?? null,

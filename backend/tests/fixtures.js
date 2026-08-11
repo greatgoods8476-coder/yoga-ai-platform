@@ -11,7 +11,7 @@ const DEFAULT_ANSWERS = {
   pregnancy_status: 'not_applicable', stress_level: 5, sleep_quality: 6,
   workout_history: 'none', favorite_exercise_types: ['walking'],
   favorite_yoga_styles: ['hatha'], available_equipment: ['mat'],
-  workout_days_per_week: 3, session_length_min: 20, preferred_time: 'morning',
+  workout_days_per_week: 3, available_days: ['monday', 'wednesday', 'friday'], session_length_min: 20, preferred_time: 'morning',
   goals: ['flexibility', 'stress_reduction'], favorite_music_genres: ['ambient'],
   preferred_coaching_style: 'calm_meditative', learning_style: 'visual',
   voice_preference: 'no_preference', instructor_gender: 'female', color_theme: 'calm_blue',
