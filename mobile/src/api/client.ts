@@ -104,6 +104,12 @@ export const api = {
   submitCheckin: (token: string, soreness: Record<string, number>, notes?: string) =>
     request<{ checkin: DailyCheckin; adaptationState: unknown }>('POST', '/plans/checkins', { token, body: { soreness, notes } }),
   checkins: (token: string) => request<{ checkins: DailyCheckin[] }>('GET', '/plans/checkins', { token }),
+
+  mobilityTestPoses: (token: string) => request<{ poses: MobilityTestPose[] }>('GET', '/mobility/test-poses', { token }),
+  submitMobilityTest: (token: string, photos: MobilityPhoto[]) =>
+    request<{ test: MobilityTest }>('POST', '/mobility/tests', { token, body: { photos } }),
+  mobilityTests: (token: string) => request<{ tests: MobilityTest[] }>('GET', '/mobility/tests', { token }),
+  latestMobilityTest: (token: string) => request<{ test: MobilityTest | null }>('GET', '/mobility/tests/latest', { token }),
 };
 
 export type NotificationSuggestion = {
@@ -262,4 +268,13 @@ export type DailyCheckin = {
   checkin_date: string;
   soreness: Record<string, number>;
   notes: string | null;
+};
+
+export type MobilityTestPose = { key: string; label: string; instructions: string };
+export type MobilityPhoto = { poseKey: string; mediaType: 'image/jpeg' | 'image/png'; data: string };
+export type MobilityTest = {
+  id: string;
+  assessment: string;
+  flagged_limitations: string[];
+  created_at: string;
 };

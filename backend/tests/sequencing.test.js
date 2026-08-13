@@ -2,7 +2,7 @@ const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { startTestServer, call, uniqueEmail } = require('./util');
 const { completeOnboarding } = require('./fixtures');
-const { sequencePhase } = require('../src/services/routineGenerator');
+const { sequencePhase, scorePose } = require('../src/services/routineGenerator');
 const pool = require('../src/db/pool');
 
 after(() => pool.end());
@@ -22,6 +22,21 @@ test('sequencePhase: classifies representative poses into the expected stage', (
   // session peak — only intermediate+ inversions/arm balances/backbends count.
   assert.equal(sequencePhase({ category: 'inversion', difficulty: 'beginner', focus_tags: ['inversion'] }), 'build');
   assert.equal(sequencePhase({ category: 'inversion', difficulty: 'intermediate', focus_tags: [] }), 'peak');
+});
+
+test('scorePose: a flagged mobility limitation boosts a matching pose, same mechanism as goals', () => {
+  const routineType = { categories: [] };
+  const profile = { user_id: 'u1', goals: [], mobility_flags: ['hip_opener'] };
+  const hipOpenerPose = { id: 'p1', category: 'hip_opener', difficulty: 'beginner', styles: [], primary_muscles: [] };
+  const otherPose = { id: 'p2', category: 'seated', difficulty: 'beginner', styles: [], primary_muscles: [] };
+
+  const hipScore = scorePose(hipOpenerPose, profile, routineType, '2026-01-01');
+  const otherScore = scorePose(otherPose, profile, routineType, '2026-01-01');
+  assert.ok(hipScore > otherScore, `expected flagged-limitation pose to outscore an unrelated pose (${hipScore} vs ${otherScore})`);
+
+  const noFlagProfile = { user_id: 'u1', goals: [], mobility_flags: [] };
+  const hipScoreNoFlag = scorePose(hipOpenerPose, noFlagProfile, routineType, '2026-01-01');
+  assert.ok(hipScore > hipScoreNoFlag, 'the flag itself should be what raises the score, not just the category');
 });
 
 test('routine generation: a full-length session progresses warm_up -> build -> peak -> cooldown, not sorted purely by score', async (t) => {

@@ -47,4 +47,34 @@ async function generateText({ system, prompt, maxTokens = 400 }) {
   }
 }
 
-module.exports = { generateText, isAvailable };
+// Same contract as generateText, but with image inputs (Claude's vision
+// capability -- there's no separate "video" endpoint; frame/photo images are
+// the actual API surface). images: [{ mediaType: 'image/jpeg'|'image/png', data: base64 }].
+async function generateVisionText({ system, prompt, images, maxTokens = 500 }) {
+  const anthropic = getClient();
+  if (!anthropic) return null;
+
+  try {
+    const content = [
+      { type: 'text', text: prompt },
+      ...images.map((img) => ({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } })),
+    ];
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content }],
+    });
+    const text = response.content
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('\n')
+      .trim();
+    return text || null;
+  } catch (err) {
+    console.error('llmClient.generateVisionText failed:', err.message);
+    return null;
+  }
+}
+
+module.exports = { generateText, generateVisionText, isAvailable };

@@ -15,6 +15,7 @@ const socialRoutes = require('./routes/social');
 const profileRoutes = require('./routes/profile');
 const orgRoutes = require('./routes/orgs');
 const planRoutes = require('./routes/plans');
+const mobilityRoutes = require('./routes/mobility');
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -28,7 +29,10 @@ function createApp() {
   const app = express();
   app.use(helmet());
   app.use(cors());
-  app.use(express.json());
+  // 15mb (not express's 100kb default) because mobility test photos (base64)
+  // are the one payload in this app that's meaningfully larger than a
+  // typical JSON body.
+  app.use(express.json({ limit: '15mb' }));
 
   app.get('/health', (req, res) => res.json({ ok: true }));
 
@@ -43,6 +47,7 @@ function createApp() {
   app.use('/profile', profileRoutes);
   app.use('/orgs', orgRoutes);
   app.use('/plans', planRoutes);
+  app.use('/mobility', mobilityRoutes);
 
   app.use((err, req, res, next) => {
     console.error(err);

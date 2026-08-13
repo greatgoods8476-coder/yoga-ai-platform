@@ -15,10 +15,11 @@ import AvatarScreen from './src/screens/AvatarScreen';
 import CoachDashboardScreen from './src/screens/CoachDashboardScreen';
 import CoachAthleteDetailScreen from './src/screens/CoachAthleteDetailScreen';
 import PlanScreen from './src/screens/PlanScreen';
+import MobilityTestScreen from './src/screens/MobilityTestScreen';
 import { useRegisterPushToken } from './src/hooks/usePushNotifications';
 import { theme } from './src/theme';
 
-type Screen = 'home' | 'session' | 'meditation' | 'progress' | 'social' | 'avatar' | 'plan';
+type Screen = 'home' | 'session' | 'meditation' | 'progress' | 'social' | 'avatar' | 'plan' | 'mobility';
 
 function InnerApp() {
   const { token, loading, logout } = useAuth();
@@ -157,6 +158,10 @@ function InnerApp() {
         onBack={() => setScreen('home')}
       />
     );
+  }
+
+  if (screen === 'mobility') {
+    return <MobilityTestScreen token={token} onBack={() => setScreen('home')} />;
   }
 
   return (

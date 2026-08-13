@@ -160,3 +160,43 @@ deploy itself was still confirmed working via logs and a browser check). Test
 it live on a device/browser before relying on it. Purchasable/branded
 clothing and a virtual currency store are explicitly out of scope for this
 pass — this is the free customization foundation only.
+
+### Monthly training plans + daily check-ins
+
+`backend/src/routes/plans.js` generates a ~30-day calendar of sessions
+scheduled on the athlete's actual reported available days (onboarding's
+`available_days` — specific weekdays, not just a count). Each day's routine
+is generated lazily (when the athlete opens it, via
+`POST /plans/days/:dayId/generate-routine`), not baked in up front, so it
+reflects `adaptation_state` as of that moment — including a same-day
+check-in. `POST /plans/checkins` feeds soreness straight into the existing
+adaptation engine (`applyFeedback`), the exact mechanism a completed
+session's pain report already used, so it decays over time and steers
+pose selection the same way — no second "assistance" system.
+
+### AI mobility test
+
+Real, honest scope: Claude's API analyzes images, not raw video files, so
+"watching a stretch test" means the athlete records a short clip per pose
+(`MobilityTestScreen.tsx`, `expo-image-picker`) and the app pulls 2 frames
+out of it (`expo-video-thumbnails`), resizes/compresses them
+(`expo-image-manipulator`), and sends those to Claude's vision API
+(`backend/src/services/mobilityAssessment.js`, `llmClient.generateVisionText`)
+for a qualitative movement assessment — visible range of motion, form,
+asymmetry — plus a small set of "flagged limitation" tags from a controlled
+vocabulary. This is a genuine visual impression from real frames of a real
+recording, not a numeric range-of-motion measurement; that would need a
+dedicated pose-estimation pipeline (see ROADMAP Phase 3).
+
+Flagged tags are written to `user_profiles.mobility_flags` and bias pose
+selection via the same `tagMatches` scoring mechanism goals and routine type
+already use (`routineGenerator.scorePose`) — so a mobility test's findings
+automatically shape every subsequent routine and training plan, including
+next month's, with no extra step. Requires `ANTHROPIC_API_KEY` (`POST
+/mobility/tests` returns 409 without it). Raw photo bytes aren't persisted
+after analysis — only the assessment text and flagged tags are kept, to
+avoid unbounded row growth from image data.
+
+**Not built**: a guided month-over-month "redo the test, see what changed"
+comparison flow, and true numeric range-of-motion tracking. Both remain on
+the roadmap, not silently skipped.

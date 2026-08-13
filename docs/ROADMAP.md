@@ -114,17 +114,29 @@ bullet above and the relevant `.env.example` / README section.
       Requires `ANTHROPIC_API_KEY`; falls back to the existing multiple-
       choice/scale UI with no regression when unset (`aiModeEnabled` flag
       from `/onboarding/start`)
-- [ ] AI video mobility test — deferred. A real video-analysis tool is
-      available and could produce a genuine qualitative movement assessment
-      (form/asymmetry description), but precise numeric range-of-motion
-      tracking (what "gauge if they got stronger" implies) needs a dedicated
-      pose-estimation pipeline — see Phase 3. Not started; needs a scoping
-      decision on which version to build before any work begins.
-- [ ] Monthly retest + rank up/down cycle — depends on the video mobility
-      test above. Note: the underlying difficulty-adjustment mechanism
-      already exists (`adaptation_state.difficultyTrend`, used by
-      `targetDifficulty()`), so a new plan already reflects session-feedback-
-      driven trends today; a video-based comparison would be additive to
-      that, not a replacement.
+- [x] AI mobility test — the athlete records a short video per stretch pose;
+      the app extracts 2 frames per clip (`expo-video-thumbnails` +
+      `expo-image-manipulator` for resize/compress) and sends them to
+      Claude's vision API (`mobilityAssessment.js`) for a qualitative
+      movement assessment plus a controlled set of "flagged limitation"
+      tags. Those tags are written to `user_profiles.mobility_flags` and
+      bias pose selection in `routineGenerator.scorePose` — the same
+      `tagMatches` mechanism goals/routine-type already use — so every
+      future routine or training-plan generation (including next month's
+      plan) automatically leans into what the test found. Real scope
+      limit, stated plainly: Claude analyzes images, not raw video, so
+      this is a qualitative visual impression from a couple of frames, not
+      numeric range-of-motion measurement — that still needs a dedicated
+      pose-estimation pipeline (Phase 3) if ever wanted. Requires
+      `ANTHROPIC_API_KEY`; returns 409 without it. Raw photo bytes are not
+      persisted (avoids unbounded row growth) — only the assessment text
+      and flagged tags survive per test.
+- [ ] Monthly retest + rank up/down cycle — partially covered already: a
+      new mobility test's flags apply automatically to whatever plan gets
+      generated next, and `adaptation_state.difficultyTrend` (used by
+      `targetDifficulty()`) already trends difficulty up/down from session
+      feedback. What's not built: a guided "redo your test, see your
+      progress since last time" flow that compares two assessments and
+      surfaces the change explicitly.
 - [ ] Seat/roster-based billing for programs — deferred pending a pricing
       model decision (seat-based vs. flat program license)

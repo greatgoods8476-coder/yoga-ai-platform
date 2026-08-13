@@ -172,6 +172,12 @@ function scorePose(pose, profile, routineType, dateStamp) {
     if (tagMatches(pose, GOAL_CATEGORY_MAP[goal] || [])) score += 2;
   }
 
+  // Areas the most recent AI mobility test flagged as limited (see
+  // mobilityAssessment.js) -- same tagMatches mechanism as goals/routine
+  // type, so a flagged hip_opener limitation biases pose selection exactly
+  // like a 'flexibility' goal would, no separate scoring path needed.
+  if (tagMatches(pose, profile.mobility_flags || [])) score += 2;
+
   const favoredStyles = new Set([...(profile.favorite_yoga_styles || []), ...(routineType.stylesBias || [])]);
   if ((pose.styles || []).some((s) => favoredStyles.has(s))) score += 2;
 
