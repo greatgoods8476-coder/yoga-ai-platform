@@ -44,7 +44,7 @@ export default function CoachAthleteDetailScreen({
     );
   }
 
-  const { profile, latestRoutine } = detail;
+  const { profile, latestRoutine, latestMobilityTest } = detail;
   const painEntries = Object.entries(profile.joint_pain || {}).filter(([, v]) => v > 0);
 
   return (
@@ -73,6 +73,28 @@ export default function CoachAthleteDetailScreen({
         )}
         {painEntries.length > 0 && (
           <Row label="Reported pain" value={painEntries.map(([k, v]) => `${k}: ${v}/5`).join(', ')} danger />
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Mobility test</Text>
+        {!latestMobilityTest ? (
+          <Text style={styles.empty}>No mobility test yet.</Text>
+        ) : (
+          <>
+            {latestMobilityTest.trend && (
+              <Text style={[styles.trendText, latestMobilityTest.trend === 'regressed' && styles.trendTextDown]}>
+                {latestMobilityTest.trend === 'improved' ? '↑ Improved since last test'
+                  : latestMobilityTest.trend === 'regressed' ? '↓ Regressed since last test'
+                  : '→ Holding steady'}
+              </Text>
+            )}
+            <Text style={styles.assessmentText}>{latestMobilityTest.assessment}</Text>
+            {latestMobilityTest.flagged_limitations.length > 0 && (
+              <Text style={styles.meta}>Flagged: {latestMobilityTest.flagged_limitations.join(', ').replace(/_/g, ' ')}</Text>
+            )}
+            <Text style={styles.testDate}>{new Date(latestMobilityTest.created_at).toLocaleDateString()}</Text>
+          </>
         )}
       </View>
 
@@ -129,4 +151,8 @@ const styles = StyleSheet.create({
   poseMeta: { color: theme.colors.textMuted },
   empty: { color: theme.colors.textMuted },
   error: { color: theme.colors.danger, textAlign: 'center' },
+  trendText: { color: theme.colors.primary, fontWeight: '600', marginBottom: theme.spacing(1) },
+  trendTextDown: { color: theme.colors.danger },
+  assessmentText: { color: theme.colors.text, lineHeight: 20 },
+  testDate: { color: theme.colors.textMuted, fontSize: 12, marginTop: theme.spacing(1) },
 });

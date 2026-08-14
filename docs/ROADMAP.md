@@ -131,12 +131,17 @@ bullet above and the relevant `.env.example` / README section.
       `ANTHROPIC_API_KEY`; returns 409 without it. Raw photo bytes are not
       persisted (avoids unbounded row growth) — only the assessment text
       and flagged tags survive per test.
-- [ ] Monthly retest + rank up/down cycle — partially covered already: a
-      new mobility test's flags apply automatically to whatever plan gets
-      generated next, and `adaptation_state.difficultyTrend` (used by
-      `targetDifficulty()`) already trends difficulty up/down from session
-      feedback. What's not built: a guided "redo your test, see your
-      progress since last time" flow that compares two assessments and
-      surfaces the change explicitly.
+- [x] Monthly retest + rank up/down cycle — retaking the mobility test with
+      a prior test on file gets a genuine before/after comparison
+      (`progress_note`, `trend`) from the same model call, not a separate
+      pass. Promotion/demotion (`levelAssessment.stepLevel`) only fires when
+      two independent signals agree — the model's qualitative trend AND a
+      concrete, checkable one (did the flagged-limitation count actually go
+      down or up) — via `decideLevelChange`; a conflicting signal (e.g. the
+      model says "improved" but flags went up) makes no change rather than
+      guessing. The new level immediately shapes the next plan/routine
+      generated, and the coach dashboard surfaces the athlete's latest
+      trend + assessment (`GET /orgs/:id/athletes/:userId` →
+      `latestMobilityTest`).
 - [ ] Seat/roster-based billing for programs — deferred pending a pricing
       model decision (seat-based vs. flat program license)

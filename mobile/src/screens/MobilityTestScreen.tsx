@@ -3,8 +3,10 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, V
 import * as ImagePicker from 'expo-image-picker';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { api, ApiError, MobilityPhoto, MobilityTest, MobilityTestPose } from '../api/client';
+import { api, ApiError, MobilityPhoto, MobilityTest, MobilityTestPose, MobilityTestSubmitResult } from '../api/client';
 import { theme } from '../theme';
+
+const TREND_LABEL: Record<string, string> = { improved: 'Improved since last time', same: 'Holding steady', regressed: 'Slipped since last time' };
 
 // Two frames per clip -- an early hold and a settled deeper hold -- sent to
 // Claude's vision API for a qualitative assessment. Claude analyzes images,
@@ -19,13 +21,15 @@ export default function MobilityTestScreen({ token, onBack }: { token: string; o
   const [frames, setFrames] = useState<MobilityPhoto[]>([]);
   const [processing, setProcessing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<MobilityTest | null>(null);
+  const [result, setResult] = useState<MobilityTestSubmitResult | null>(null);
+  const [history, setHistory] = useState<MobilityTest[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.mobilityTestPoses(token)
       .then((r) => setPoses(r.poses))
       .catch((e) => setError(e instanceof Error ? e.message : 'Could not load the test.'));
+    api.mobilityTests(token).then((r) => setHistory(r.tests)).catch(() => {});
   }, []);
 
   if (!poses) {
@@ -84,7 +88,7 @@ export default function MobilityTestScreen({ token, onBack }: { token: string; o
     setError(null);
     try {
       const res = await api.submitMobilityTest(token, frames);
-      setResult(res.test);
+      setResult(res);
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
         setError('AI mobility analysis isn\'t set up on this server yet.');
@@ -97,17 +101,36 @@ export default function MobilityTestScreen({ token, onBack }: { token: string; o
   }
 
   if (result) {
+    const { test, yogaLevel } = result;
     return (
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Your mobility assessment</Text>
+
+        {test.level_change && yogaLevel && (
+          <View style={[styles.card, styles.levelChangeCard]}>
+            <Text style={styles.levelChangeTitle}>
+              {test.level_change === 'up' ? '🎉 Leveled up!' : 'Adjusting your level'}
+            </Text>
+            <Text style={styles.cardTitle}>{yogaLevel.label}</Text>
+            <Text style={styles.subtitle}>{yogaLevel.tagline}</Text>
+          </View>
+        )}
+
+        {test.trend && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{TREND_LABEL[test.trend] || test.trend}</Text>
+            {test.progress_note && <Text style={styles.assessmentText}>{test.progress_note}</Text>}
+          </View>
+        )}
+
         <View style={styles.card}>
-          <Text style={styles.assessmentText}>{result.assessment}</Text>
+          <Text style={styles.assessmentText}>{test.assessment}</Text>
         </View>
-        {result.flagged_limitations.length > 0 && (
+        {test.flagged_limitations.length > 0 && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Areas we'll focus on</Text>
             <View style={styles.chipsRow}>
-              {result.flagged_limitations.map((tag) => (
+              {test.flagged_limitations.map((tag) => (
                 <View key={tag} style={styles.flagChip}>
                   <Text style={styles.flagChipText}>{tag.replace(/_/g, ' ')}</Text>
                 </View>
@@ -156,6 +179,18 @@ export default function MobilityTestScreen({ token, onBack }: { token: string; o
           {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Get my assessment</Text>}
         </Pressable>
       )}
+
+      {history.length > 0 && (
+        <View style={styles.historySection}>
+          <Text style={styles.cardTitle}>Past tests</Text>
+          {history.map((t) => (
+            <View key={t.id} style={styles.historyRow}>
+              <Text style={styles.historyDate}>{new Date(t.created_at).toLocaleDateString()}</Text>
+              <Text style={styles.historyTrend}>{t.trend ? (TREND_LABEL[t.trend] || t.trend) : 'First test'}</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -182,4 +217,13 @@ const styles = StyleSheet.create({
   flagChipText: { color: theme.colors.primaryDark, fontSize: 13, fontWeight: '600', textTransform: 'capitalize' },
   button: { backgroundColor: theme.colors.primary, borderRadius: theme.radius, padding: theme.spacing(2), alignItems: 'center' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  levelChangeCard: { backgroundColor: theme.colors.accent, borderColor: theme.colors.primary },
+  levelChangeTitle: { color: theme.colors.primaryDark, fontWeight: '700', fontSize: 15, marginBottom: theme.spacing(0.5) },
+  historySection: { marginTop: theme.spacing(1) },
+  historyRow: {
+    flexDirection: 'row', justifyContent: 'space-between', paddingVertical: theme.spacing(1),
+    borderTopWidth: 1, borderTopColor: theme.colors.border,
+  },
+  historyDate: { color: theme.colors.textMuted, fontSize: 13 },
+  historyTrend: { color: theme.colors.text, fontSize: 13, fontWeight: '600' },
 });

@@ -107,7 +107,7 @@ export const api = {
 
   mobilityTestPoses: (token: string) => request<{ poses: MobilityTestPose[] }>('GET', '/mobility/test-poses', { token }),
   submitMobilityTest: (token: string, photos: MobilityPhoto[]) =>
-    request<{ test: MobilityTest }>('POST', '/mobility/tests', { token, body: { photos } }),
+    request<MobilityTestSubmitResult>('POST', '/mobility/tests', { token, body: { photos } }),
   mobilityTests: (token: string) => request<{ tests: MobilityTest[] }>('GET', '/mobility/tests', { token }),
   latestMobilityTest: (token: string) => request<{ test: MobilityTest | null }>('GET', '/mobility/tests/latest', { token }),
 };
@@ -241,8 +241,10 @@ export type AthleteDetail = {
     current_injuries: string[];
     joint_pain: Record<string, number>;
     goals: string[];
+    mobility_flags: string[];
   };
   latestRoutine: RoutineResponse | null;
+  latestMobilityTest: MobilityTest | null;
 };
 
 export type TrainingPlan = {
@@ -276,5 +278,9 @@ export type MobilityTest = {
   id: string;
   assessment: string;
   flagged_limitations: string[];
+  progress_note: string | null;
+  trend: 'improved' | 'same' | 'regressed' | null;
+  level_change: 'up' | 'down' | null;
   created_at: string;
 };
+export type MobilityTestSubmitResult = { test: MobilityTest; yogaLevel: YogaLevel | null };

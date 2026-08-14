@@ -45,4 +45,36 @@ function assessYogaLevel(answers) {
   return { level: picked.level, label: picked.label, tagline: picked.tagline, cautious };
 }
 
-module.exports = { assessYogaLevel };
+// Moves one step up or down the same LEVELS ladder assessYogaLevel picks
+// from, bounded at both ends. Used by the mobility-test retest cycle to
+// promote/demote based on measured progress rather than recomputing from
+// onboarding answers (which don't change month to month).
+function stepLevel(currentLevelKey, direction) {
+  const index = LEVELS.findIndex((l) => l.level === currentLevelKey);
+  if (index === -1) return currentLevelKey;
+
+  const nextIndex = direction === 'up'
+    ? Math.min(LEVELS.length - 1, index + 1)
+    : direction === 'down'
+      ? Math.max(0, index - 1)
+      : index;
+
+  return LEVELS[nextIndex].level;
+}
+
+function levelInfo(levelKey) {
+  return LEVELS.find((l) => l.level === levelKey) || null;
+}
+
+// Combines the model's qualitative trend judgment (from a mobility retest)
+// with a concrete, checkable signal -- did the flagged-limitation count
+// actually go down or up -- before ever moving the athlete's level. Neither
+// signal alone is trusted on its own, matching the safety-first spirit of
+// assessYogaLevel's pain cap: a conflicting/ambiguous signal means no change.
+function decideLevelChange(trend, prevFlaggedCount, newFlaggedCount) {
+  if (trend === 'improved' && newFlaggedCount <= prevFlaggedCount) return 'up';
+  if (trend === 'regressed' && newFlaggedCount >= prevFlaggedCount) return 'down';
+  return null;
+}
+
+module.exports = { assessYogaLevel, stepLevel, levelInfo, decideLevelChange, LEVELS };

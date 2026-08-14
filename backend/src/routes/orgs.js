@@ -95,7 +95,13 @@ router.get('/:id/athletes/:userId', async (req, res) => {
     latestRoutine = { routine: routineRows[0], items };
   }
 
-  res.json({ profile: profileRows[0], latestRoutine });
+  const { rows: mobilityRows } = await pool.query(
+    `SELECT id, assessment, flagged_limitations, progress_note, trend, level_change, created_at
+     FROM mobility_tests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [req.params.userId]
+  );
+
+  res.json({ profile: profileRows[0], latestRoutine, latestMobilityTest: mobilityRows[0] || null });
 });
 
 // Adds an existing user (by email) to the org as an athlete. Real

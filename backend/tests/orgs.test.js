@@ -76,6 +76,15 @@ test('athlete detail: returns profile and latest generated routine, 404s for a n
   assert.equal(detail.body.profile.sport, 'track');
   assert.ok(detail.body.latestRoutine.routine);
   assert.ok(detail.body.latestRoutine.items.length > 0);
+  assert.equal(detail.body.latestMobilityTest, null);
+
+  await pool.query(
+    `INSERT INTO mobility_tests (user_id, photos, assessment, flagged_limitations) VALUES ($1, '[]', 'solid mobility overall', $2)`,
+    [athlete.userId, ['hamstring']]
+  );
+  const detailWithMobility = await call(server.baseUrl, 'GET', `/orgs/${org.id}/athletes/${athlete.userId}`, { token: coach.token });
+  assert.equal(detailWithMobility.body.latestMobilityTest.assessment, 'solid mobility overall');
+  assert.deepEqual(detailWithMobility.body.latestMobilityTest.flagged_limitations, ['hamstring']);
 
   const outsider = await signupOnboarded(server.baseUrl, 'athlete3');
   const notFound = await call(server.baseUrl, 'GET', `/orgs/${org.id}/athletes/${outsider.userId}`, { token: coach.token });

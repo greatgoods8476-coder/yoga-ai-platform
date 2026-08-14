@@ -55,6 +55,27 @@ test('POST /mobility/tests validates photos before ever calling the model', asyn
   assert.equal(missingData.status, 400);
 });
 
+test('POST /mobility/tests still 409s cleanly (no crash) when a prior test exists to compare against', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const athlete = await signupAndOnboard(server.baseUrl, uniqueEmail('mobprior'), 'password123');
+  await pool.query(
+    `INSERT INTO mobility_tests (user_id, photos, assessment, flagged_limitations)
+     VALUES ($1, '[]', 'previous assessment text', $2)`,
+    [athlete.userId, ['hip_opener']]
+  );
+
+  const res = await call(server.baseUrl, 'POST', '/mobility/tests', {
+    token: athlete.token,
+    body: { photos: [{ poseKey: 'forward_fold', mediaType: 'image/jpeg', data: 'ZmFrZS1pbWFnZS1kYXRh' }] },
+  });
+  assert.equal(res.status, 409);
+
+  const latest = await call(server.baseUrl, 'GET', '/mobility/tests/latest', { token: athlete.token });
+  assert.equal(latest.body.test.assessment, 'previous assessment text');
+});
+
 test('GET /mobility/tests and /mobility/tests/latest return empty state cleanly before any test exists', async (t) => {
   const server = await startTestServer();
   t.after(() => server.close());
