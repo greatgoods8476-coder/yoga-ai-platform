@@ -79,7 +79,16 @@ async function createAthlete(client, poses, orgId, spec) {
   const email = `${spec.first.toLowerCase()}.${spec.last.toLowerCase()}.demo@example.com`;
   const existing = await client.query('SELECT id FROM users WHERE email = $1', [email]);
   if (existing.rows.length > 0) {
-    console.log(`  skip (already exists): ${spec.first} ${spec.last} <${email}>`);
+    // Already exists (e.g. seeded for a different coach/org before) -- still
+    // link them to *this* org rather than silently skipping, otherwise a
+    // coach who re-runs this ends up with an org that has zero athletes.
+    const existingUserId = existing.rows[0].id;
+    await client.query(
+      `INSERT INTO org_memberships (org_id, user_id, role) VALUES ($1, $2, 'athlete')
+       ON CONFLICT (org_id, user_id) DO UPDATE SET role = 'athlete'`,
+      [orgId, existingUserId]
+    );
+    console.log(`  linked existing athlete to this org: ${spec.first} ${spec.last} <${email}>`);
     return;
   }
 
