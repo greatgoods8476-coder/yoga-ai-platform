@@ -148,8 +148,12 @@ export default function SessionPlayerScreen({
         <Pressable style={styles.secondaryButton} onPress={() => advance(true)}>
           <Text style={styles.secondaryButtonText}>Skip</Text>
         </Pressable>
-        <Pressable style={styles.primaryButton} onPress={() => advance(false)}>
-          <Text style={styles.primaryButtonText}>Next pose</Text>
+        <Pressable
+          style={[styles.primaryButton, secondsLeft > 0 && styles.primaryButtonDisabled]}
+          onPress={() => advance(false)}
+          disabled={secondsLeft > 0}
+        >
+          <Text style={styles.primaryButtonText}>{secondsLeft > 0 ? `Hold for ${secondsLeft}s` : 'Next pose'}</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -177,6 +181,7 @@ const styles = StyleSheet.create({
   chipText: { color: theme.colors.text },
   chipTextSelected: { color: '#fff' },
   primaryButton: { backgroundColor: theme.colors.primary, borderRadius: theme.radius, paddingVertical: theme.spacing(2), paddingHorizontal: theme.spacing(3), alignItems: 'center' },
+  primaryButtonDisabled: { backgroundColor: theme.colors.border },
   primaryButtonText: { color: '#fff', fontWeight: '600' },
   secondaryButton: { borderRadius: theme.radius, paddingVertical: theme.spacing(2), paddingHorizontal: theme.spacing(3), alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border },
   secondaryButtonText: { color: theme.colors.textMuted, fontWeight: '600' },

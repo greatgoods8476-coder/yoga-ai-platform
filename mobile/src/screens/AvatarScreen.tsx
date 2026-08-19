@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import { WebView, WebViewMessageEvent } from '../components/WebViewCompat';
 import { api } from '../api/client';
 import { theme } from '../theme';
 
