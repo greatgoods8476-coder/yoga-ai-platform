@@ -96,7 +96,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', minHeight: 84,
   },
   cardText: { color: theme.colors.text, fontWeight: '600', textAlign: 'center' },
-  footerLinks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: theme.spacing(4) },
+  footerLinks: {
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center',
+    gap: theme.spacing(2.5), marginTop: theme.spacing(4), paddingBottom: theme.spacing(2),
+  },
   link: { color: theme.colors.primary, fontWeight: '600' },
   error: { color: theme.colors.danger, marginBottom: theme.spacing(2) },
 });
