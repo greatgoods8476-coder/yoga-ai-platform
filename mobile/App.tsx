@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { api, RoutineResponse, YogaLevel } from './src/api/client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { api, RoutineResponse } from './src/api/client';
 import { AuthProvider, useAuth } from './src/state/AuthContext';
 import AuthScreen from './src/screens/AuthScreen';
+import IntroVideoScreen from './src/screens/IntroVideoScreen';
+import AssessmentStartScreen from './src/screens/AssessmentStartScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
-import OnboardingResultScreen from './src/screens/OnboardingResultScreen';
+import MobilityTestScreen from './src/screens/MobilityTestScreen';
+import PlanRevealScreen from './src/screens/PlanRevealScreen';
+import DefaultAvatarScreen from './src/screens/DefaultAvatarScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import SessionPlayerScreen from './src/screens/SessionPlayerScreen';
 import MeditationScreen from './src/screens/MeditationScreen';
@@ -15,18 +20,28 @@ import AvatarScreen from './src/screens/AvatarScreen';
 import CoachDashboardScreen from './src/screens/CoachDashboardScreen';
 import CoachAthleteDetailScreen from './src/screens/CoachAthleteDetailScreen';
 import PlanScreen from './src/screens/PlanScreen';
-import MobilityTestScreen from './src/screens/MobilityTestScreen';
 import { useRegisterPushToken } from './src/hooks/usePushNotifications';
 import { theme } from './src/theme';
 
-type Screen = 'home' | 'session' | 'meditation' | 'progress' | 'social' | 'avatar' | 'plan' | 'mobility';
+type Screen = 'home' | 'session' | 'meditation' | 'progress' | 'social' | 'avatar' | 'plan' | 'examMobility' | 'examReveal';
+
+// First-time sequence, walked through once right after signup: a (currently
+// placeholder) intro video, the written assessment, a baseline mobility
+// test that's deliberately downstream of it (assessMobility on the backend
+// reads the athlete's sport/position/injuries straight from those written
+// answers), then the first month's plan reveal with avatar setup.
+type FirstTimeStep = 'mobility' | 'planReveal' | 'avatarCustomize' | 'avatarDefault' | null;
+
+const INTRO_SEEN_KEY = 'yoga_ai_intro_seen';
 
 function InnerApp() {
   const { token, loading, logout } = useAuth();
   const [isCoach, setIsCoach] = useState<boolean | null>(null);
   const [selectedAthlete, setSelectedAthlete] = useState<{ orgId: string; userId: string } | null>(null);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
-  const [pendingYogaLevel, setPendingYogaLevel] = useState<YogaLevel | null>(null);
+  const [introSeen, setIntroSeen] = useState<boolean | null>(null);
+  const [assessmentStarted, setAssessmentStarted] = useState(false);
+  const [firstTimeStep, setFirstTimeStep] = useState<FirstTimeStep>(null);
   const [screen, setScreen] = useState<Screen>('home');
   const [activeRoutine, setActiveRoutine] = useState<RoutineResponse | null>(null);
   const [activePlanDayId, setActivePlanDayId] = useState<string | null>(null);
@@ -37,10 +52,14 @@ function InnerApp() {
     if (!token) {
       setIsCoach(null);
       setOnboardingCompleted(null);
+      setIntroSeen(null);
+      setAssessmentStarted(false);
+      setFirstTimeStep(null);
       return;
     }
     api.myOrgs(token).then((r) => setIsCoach(r.organizations.some((o) => o.role === 'coach')));
     api.onboardingStatus(token).then((r) => setOnboardingCompleted(r.onboardingCompleted));
+    AsyncStorage.getItem(INTRO_SEEN_KEY).then((stored) => setIntroSeen(!!stored));
   }, [token]);
 
   if (loading) {
@@ -84,28 +103,84 @@ function InnerApp() {
   }
 
   if (!onboardingCompleted) {
+    if (introSeen === null) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background }}>
+          <ActivityIndicator color={theme.colors.primary} />
+        </View>
+      );
+    }
+    if (!introSeen) {
+      return (
+        <IntroVideoScreen
+          onDone={() => {
+            AsyncStorage.setItem(INTRO_SEEN_KEY, '1').catch(() => {});
+            setIntroSeen(true);
+          }}
+        />
+      );
+    }
+    if (!assessmentStarted) {
+      return <AssessmentStartScreen onStart={() => setAssessmentStarted(true)} />;
+    }
     return (
       <OnboardingScreen
         token={token}
-        onComplete={(yogaLevel) => {
+        onComplete={() => {
           setOnboardingCompleted(true);
-          setPendingYogaLevel(yogaLevel || null);
+          setFirstTimeStep('mobility');
         }}
       />
     );
   }
 
-  if (pendingYogaLevel) {
+  if (firstTimeStep === 'mobility') {
     return (
-      <OnboardingResultScreen
+      <MobilityTestScreen
         token={token}
-        yogaLevel={pendingYogaLevel}
-        onStartClass={(routine) => {
-          setPendingYogaLevel(null);
-          setActiveRoutine(routine);
-          setScreen('session');
-        }}
-        onSkip={() => setPendingYogaLevel(null)}
+        title="Your Baseline Mobility Test"
+        onBack={() => setFirstTimeStep('planReveal')}
+        onFirstComplete={() => setFirstTimeStep('planReveal')}
+      />
+    );
+  }
+
+  if (firstTimeStep === 'planReveal') {
+    return (
+      <PlanRevealScreen
+        token={token}
+        onContinue={() => setFirstTimeStep('avatarDefault')}
+        onCustomizeAvatar={() => setFirstTimeStep('avatarCustomize')}
+      />
+    );
+  }
+
+  if (firstTimeStep === 'avatarCustomize') {
+    return <AvatarScreen token={token} onBack={() => setFirstTimeStep(null)} />;
+  }
+
+  if (firstTimeStep === 'avatarDefault') {
+    return <DefaultAvatarScreen token={token} onDone={() => setFirstTimeStep(null)} />;
+  }
+
+  if (screen === 'examMobility') {
+    return (
+      <MobilityTestScreen
+        token={token}
+        title="Monthly Exam"
+        onBack={() => setScreen('home')}
+        onFirstComplete={() => setScreen('examReveal')}
+      />
+    );
+  }
+
+  if (screen === 'examReveal') {
+    return (
+      <PlanRevealScreen
+        token={token}
+        showAvatarSetup={false}
+        onContinue={() => setScreen('home')}
+        onCustomizeAvatar={() => setScreen('avatar')}
       />
     );
   }
@@ -160,10 +235,6 @@ function InnerApp() {
     );
   }
 
-  if (screen === 'mobility') {
-    return <MobilityTestScreen token={token} onBack={() => setScreen('home')} />;
-  }
-
   return (
     <HomeScreenWithLogout
       token={token}
@@ -171,20 +242,37 @@ function InnerApp() {
         setActiveRoutine(routine);
         setScreen('session');
       }}
+      onStartPlanDay={(dayId, routine) => {
+        setActivePlanDayId(dayId);
+        setActiveRoutine(routine);
+        setScreen('session');
+      }}
+      onMonthlyExam={() => setScreen('examMobility')}
       onNavigate={setScreen}
     />
   );
 }
 
 function HomeScreenWithLogout({
-  token, onStartSession, onNavigate,
+  token, onStartSession, onStartPlanDay, onMonthlyExam, onNavigate,
 }: {
   token: string;
   onStartSession: (routine: RoutineResponse) => void;
+  onStartPlanDay: (dayId: string, routine: RoutineResponse) => void;
+  onMonthlyExam: () => void;
   onNavigate: (screen: Screen) => void;
 }) {
   const { logout } = useAuth();
-  return <HomeScreen token={token} onStartSession={onStartSession} onNavigate={onNavigate} onLogout={logout} />;
+  return (
+    <HomeScreen
+      token={token}
+      onStartSession={onStartSession}
+      onStartPlanDay={onStartPlanDay}
+      onMonthlyExam={onMonthlyExam}
+      onNavigate={onNavigate}
+      onLogout={logout}
+    />
+  );
 }
 
 export default function App() {

@@ -188,6 +188,28 @@ vocabulary. This is a genuine visual impression from real frames of a real
 recording, not a numeric range-of-motion measurement; that would need a
 dedicated pose-estimation pipeline (see ROADMAP Phase 3).
 
+The assessment is grounded in real biomechanics, not generic encouragement:
+the vision system prompt (`BIOMECHANICS_CHECKLIST`) tells the model exactly
+what a strength coach or PT checks per movement — knee valgus vs. varus,
+ankle dorsiflexion via heel lift, scapular winging, hip flexor tightness via
+lunge depth/lumbar compensation, hip drop during single-leg balance
+(a Trendelenburg sign) — and requires reasoning from the observed
+compensation to the training focus that corrects it (knee valgus → flag
+strength + balance, not just "knee"). It also isn't a standalone test: the
+route pulls the athlete's sport, position, season phase, primary training
+goal, injury history, and joint pain straight from `user_profiles`
+(populated by the written onboarding assessment) and passes it in as
+`athleteContext`, so the model weights the movements and compensation
+patterns most relevant to that sport/position and looks harder at any joint
+tied to a reported injury. This is exactly why the app always runs the
+written assessment before the mobility test, never the other way around.
+
+Each test also returns a 0-100 visual estimate across seven training
+dimensions — strength, mobility, stability, flexibility, balance,
+movement_control, athletic_performance (`SCORE_KEYS`) — EMA-blended into
+`progress_metrics` so month-to-month trend lines are smoothed rather than
+noisy test-to-test jumps.
+
 Flagged tags are written to `user_profiles.mobility_flags` and bias pose
 selection via the same `tagMatches` scoring mechanism goals and routine type
 already use (`routineGenerator.scorePose`) — so a mobility test's findings
@@ -197,6 +219,36 @@ next month's, with no extra step. Requires `ANTHROPIC_API_KEY` (`POST
 after analysis — only the assessment text and flagged tags are kept, to
 avoid unbounded row growth from image data.
 
-**Not built**: a guided month-over-month "redo the test, see what changed"
-comparison flow, and true numeric range-of-motion tracking. Both remain on
-the roadmap, not silently skipped.
+Retaking the test with a prior one on file gets a genuine before/after
+comparison (`progress_note`, `trend`) from the same model call. Level
+promotion/demotion only fires when two independent signals agree — the
+model's qualitative trend and a concrete, checkable one (did the flagged-
+limitation count actually go down or up) — via `decideLevelChange`; a
+conflicting signal makes no change rather than guessing.
+
+**Not built**: true numeric range-of-motion tracking — that still needs a
+dedicated pose-estimation pipeline (ROADMAP Phase 3), not silently skipped.
+
+### Full athlete-side flow
+
+The first-time sequence an athlete walks through end to end: a placeholder
+intro-video screen (`IntroVideoScreen`, gated behind a one-time
+`AsyncStorage` flag so it only ever shows once per device — genuinely a
+no-op today since no video asset has been supplied yet, stated honestly
+rather than faked), a "Start Now" assessment landing screen with time
+estimates for each step (`AssessmentStartScreen`), the written onboarding
+assessment, the baseline mobility test immediately after (see above for why
+that order matters), a calendar-based "Your Month, Mapped Out" plan reveal
+(`PlanRevealScreen` + `PlanCalendar`) with a choice between customizing the
+coach avatar or auto-generating a default one from Ready Player Me's
+`quickStart` mode keyed off the onboarding-collected `instructor_gender`
+(`DefaultAvatarScreen` — real caveat: this sandbox can't verify whether
+RPM's quickStart truly exports with zero taps or needs one confirm tap,
+since its domain is network-blocked here; the screen stays visible rather
+than hidden so it degrades to "one quick tap" instead of silently breaking
+either way), and a simplified two-button Home screen (Scheduled Stretch /
+Custom Stretch, replacing the earlier 10-card routine grid). Once the
+active plan's end date is reached, a Monthly Exam card appears on Home that
+retests mobility and re-reveals the regenerated plan — skipping the avatar
+setup card the second time around, since the athlete already has a coach by
+then.

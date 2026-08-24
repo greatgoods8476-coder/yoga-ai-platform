@@ -131,6 +131,51 @@ bullet above and the relevant `.env.example` / README section.
       `ANTHROPIC_API_KEY`; returns 409 without it. Raw photo bytes are not
       persisted (avoids unbounded row growth) — only the assessment text
       and flagged tags survive per test.
+- [x] Mobility test grounded in the written assessment, not standalone — the
+      route pulls the athlete's sport, position, season phase, primary
+      training goal, injury history, and joint pain straight from
+      `user_profiles` (populated by onboarding) and passes it into
+      `assessMobility` as `athleteContext`. The vision system prompt uses it
+      to weight which compensation patterns matter most for that sport/
+      position and sharpen scrutiny around any joint tied to a reported
+      injury, rather than assessing the movements in a vacuum — this is why
+      the written assessment is step 1 and the mobility test is step 2, not
+      the other way around.
+- [x] Named biomechanics checklist (`BIOMECHANICS_CHECKLIST` in
+      `mobilityAssessment.js`) drives the vision assessment with the actual
+      criteria a strength coach/PT would check per movement — knee valgus vs.
+      varus, ankle dorsiflexion via heel lift, scapular winging, hip flexor
+      tightness via lunge depth/lumbar compensation, single-leg balance hip
+      drop (Trendelenburg sign), etc. — and reasons from the observed
+      compensation to the training focus that corrects it (e.g. knee valgus
+      → flag strength + balance, not just "knee"), not a generic body-part
+      checklist.
+- [x] Seven-dimension monthly progression scoring — strength, mobility,
+      stability, flexibility, balance, movement_control, athletic_performance
+      (`SCORE_KEYS`), each a 0-100 visual estimate from the same model call,
+      EMA-blended into `progress_metrics` (`recordMobilityScores`) so the
+      trend is smoothed rather than noisy test-to-test jumps.
+- [x] Full athlete-side flow rebuild end to end: a placeholder intro-video
+      screen (`IntroVideoScreen`, gated behind a one-time `AsyncStorage`
+      flag; genuinely a no-op until a real video asset is supplied — no
+      video exists to show yet, stated honestly rather than faked), a
+      "Start Now" assessment landing screen with time estimates
+      (`AssessmentStartScreen`), the baseline mobility test running
+      immediately after the written assessment completes, a calendar-based
+      "Your Month, Mapped Out" plan reveal (`PlanRevealScreen` +
+      `PlanCalendar`) with a choice between customizing the coach avatar or
+      auto-generating a default one from Ready Player Me's `quickStart` mode
+      keyed off the onboarding-collected `instructor_gender`
+      (`DefaultAvatarScreen` — real caveat: whether RPM's quickStart truly
+      exports with zero taps versus one confirm tap isn't verifiable from
+      this sandbox, since its domain is network-blocked here; the screen
+      stays visible rather than hidden so it degrades to "one quick tap"
+      instead of silently breaking either way), a simplified two-button Home
+      screen (Scheduled Stretch / Custom Stretch, replacing the old 10-card
+      routine grid), and a Monthly Exam entry point that appears once the
+      active plan's end date is reached, retests mobility, and re-reveals
+      the regenerated plan (skipping the avatar setup card the second time
+      around, since the athlete already has a coach by then).
 - [x] Monthly retest + rank up/down cycle — retaking the mobility test with
       a prior test on file gets a genuine before/after comparison
       (`progress_note`, `trend`) from the same model call, not a separate

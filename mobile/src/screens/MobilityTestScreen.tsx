@@ -15,7 +15,18 @@ const TREND_LABEL: Record<string, string> = { improved: 'Improved since last tim
 // couple of frames pulled from it), not a claim of continuous motion tracking.
 const FRAME_TIMES_MS = [1000, 4500];
 
-export default function MobilityTestScreen({ token, onBack }: { token: string; onBack: () => void }) {
+export default function MobilityTestScreen({
+  token, onBack, onFirstComplete, title,
+}: {
+  token: string;
+  onBack: () => void;
+  // When provided (the onboarding sequence, or a Monthly Exam retest that
+  // should auto-regenerate the plan), a successful submit hands control
+  // straight to the caller instead of showing the in-place "Done" result
+  // screen -- the caller decides what happens next.
+  onFirstComplete?: (result: MobilityTestSubmitResult) => void;
+  title?: string;
+}) {
   const [poses, setPoses] = useState<MobilityTestPose[] | null>(null);
   const [poseIndex, setPoseIndex] = useState(0);
   const [frames, setFrames] = useState<MobilityPhoto[]>([]);
@@ -88,6 +99,10 @@ export default function MobilityTestScreen({ token, onBack }: { token: string; o
     setError(null);
     try {
       const res = await api.submitMobilityTest(token, frames);
+      if (onFirstComplete) {
+        onFirstComplete(res);
+        return;
+      }
       setResult(res);
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
@@ -164,8 +179,8 @@ export default function MobilityTestScreen({ token, onBack }: { token: string; o
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Pressable onPress={onBack}><Text style={styles.link}>Back</Text></Pressable>
-      <Text style={styles.title}>Mobility Test</Text>
+      {!onFirstComplete && <Pressable onPress={onBack}><Text style={styles.link}>Back</Text></Pressable>}
+      <Text style={styles.title}>{title || 'Mobility Test'}</Text>
       <Text style={styles.subtitle}>
         Record a short clip of each stretch. The AI reviews your form and range of motion, then shapes your training around what it finds.
       </Text>

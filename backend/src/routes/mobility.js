@@ -27,8 +27,14 @@ router.post('/tests', async (req, res) => {
     if (!VALID_MEDIA_TYPES.has(p.mediaType)) return res.status(400).json({ error: 'mediaType must be image/jpeg or image/png' });
   }
 
-  const { rows: profileRows } = await pool.query('SELECT yoga_level FROM user_profiles WHERE user_id = $1', [req.userId]);
+  const { rows: profileRows } = await pool.query(
+    `SELECT yoga_level, sport, athletic_position, season_phase, primary_athletic_goal,
+            past_injuries, current_injuries, joint_pain, current_flexibility, current_mobility
+     FROM user_profiles WHERE user_id = $1`,
+    [req.userId]
+  );
   if (profileRows.length === 0) return res.status(404).json({ error: 'profile not found' });
+  const profile = profileRows[0];
 
   const { rows: priorRows } = await pool.query(
     'SELECT assessment, flagged_limitations FROM mobility_tests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
@@ -38,15 +44,27 @@ router.post('/tests', async (req, res) => {
     ? { assessment: priorRows[0].assessment, flaggedLimitations: priorRows[0].flagged_limitations || [] }
     : null;
 
-  const result = await assessMobility(photos, previousTest);
+  const athleteContext = {
+    sport: profile.sport,
+    athleticPosition: profile.athletic_position,
+    seasonPhase: profile.season_phase,
+    primaryAthleticGoal: profile.primary_athletic_goal,
+    pastInjuries: profile.past_injuries,
+    currentInjuries: profile.current_injuries,
+    jointPain: profile.joint_pain,
+    currentFlexibility: profile.current_flexibility,
+    currentMobility: profile.current_mobility,
+  };
+
+  const result = await assessMobility(photos, previousTest, athleteContext);
   if (result.unavailable) return res.status(409).json({ error: 'AI mobility assessment is not configured on this server' });
   if (!result.assessment) return res.status(502).json({ error: 'could not generate an assessment, please try again' });
 
   let levelChange = null;
-  let newYogaLevel = profileRows[0].yoga_level;
+  let newYogaLevel = profile.yoga_level;
   if (previousTest && result.trend) {
     levelChange = decideLevelChange(result.trend, previousTest.flaggedLimitations.length, result.flaggedLimitations.length);
-    if (levelChange) newYogaLevel = stepLevel(profileRows[0].yoga_level, levelChange);
+    if (levelChange) newYogaLevel = stepLevel(profile.yoga_level, levelChange);
   }
 
   const { rows } = await pool.query(

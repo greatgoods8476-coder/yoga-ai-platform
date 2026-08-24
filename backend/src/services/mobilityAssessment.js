@@ -75,14 +75,47 @@ be concrete about what you observe, not generic:
   sport-specific movement shown reflects the demands of their sport.
 `;
 
-function buildSystem(hasPrevious) {
+// Turns the athlete's written-assessment answers into instructions that
+// change WHAT the model looks for, not just narration bolted onto the
+// output -- the mobility test is downstream of the written assessment, so a
+// soccer player's ankle stability under load or a swimmer's overhead
+// shoulder range should get real weight, and a flagged past/current injury
+// should sharpen scrutiny of that specific joint rather than being ignored.
+function buildAthleteContextBlock(ctx) {
+  if (!ctx) return '';
+  const lines = [];
+  if (ctx.sport && ctx.sport.toLowerCase() !== 'none') {
+    let sportLine = `Sport: ${ctx.sport}`;
+    if (ctx.athleticPosition && ctx.athleticPosition.toLowerCase() !== 'n/a') sportLine += ` (position/event: ${ctx.athleticPosition})`;
+    if (ctx.seasonPhase) sportLine += `, currently in ${ctx.seasonPhase.replace('_', ' ')}`;
+    lines.push(sportLine);
+  }
+  if (ctx.primaryAthleticGoal) lines.push(`Primary training goal: ${ctx.primaryAthleticGoal.replace(/_/g, ' ')}`);
+  const injuries = [...(ctx.pastInjuries || []), ...(ctx.currentInjuries || [])].filter((v) => v && v.toLowerCase() !== 'none');
+  if (injuries.length) lines.push(`Injury history: ${injuries.join('; ')}`);
+  if (ctx.jointPain) {
+    const painPoints = Object.entries(ctx.jointPain).filter(([, v]) => Number(v) > 0).map(([k, v]) => `${k}=${v}/5`);
+    if (painPoints.length) lines.push(`Current joint pain: ${painPoints.join(', ')}`);
+  }
+  if (ctx.currentFlexibility) lines.push(`Self-reported flexibility: ${ctx.currentFlexibility}`);
+  if (ctx.currentMobility) lines.push(`Self-reported joint mobility: ${ctx.currentMobility}`);
+  if (!lines.length) return '';
+
+  return '\nThe athlete\'s written intake answers (use these to focus your assessment -- weight the movements '
+    + 'and compensation patterns most relevant to their sport and position more heavily, pay closer attention to '
+    + 'any joint tied to a reported injury or pain, and frame limitations in terms of their stated training goal):\n'
+    + lines.map((l) => `- ${l}`).join('\n') + '\n';
+}
+
+function buildSystem(hasPrevious, athleteContext) {
   let system = 'You are an experienced strength & conditioning coach and movement specialist assessing an '
     + 'athlete\'s mobility, stability, and movement quality from frames of them performing a set of movements. '
     + 'Apply real biomechanical reasoning -- name the specific compensation patterns and asymmetries you can '
     + 'actually see, the way an experienced coach would, not generic encouragement. This is a visual impression '
     + 'from a few frames, not a clinical diagnosis or a goniometer measurement -- never state exact degrees or '
     + 'numbers you can\'t actually see, and don\'t present this as a substitute for an in-person evaluation by a '
-    + 'certified athletic trainer or physical therapist when something looks like it needs one.\n\n'
+    + 'certified athletic trainer or physical therapist when something looks like it needs one.\n'
+    + buildAthleteContextBlock(athleteContext) + '\n'
     + BIOMECHANICS_CHECKLIST + '\n'
     + 'Respond in this exact structure:\n'
     + '1. A short assessment (4-6 sentences) covering foot/ankle, knee, hip, shoulder, and overall movement '
@@ -142,15 +175,20 @@ function parseScores(raw) {
 // previousTest (optional): { assessment, flaggedLimitations } from the
 // athlete's last mobility test, to get a genuine before/after comparison
 // instead of just a standalone snapshot.
+// athleteContext (optional): { sport, athleticPosition, seasonPhase,
+// primaryAthleticGoal, pastInjuries, currentInjuries, jointPain,
+// currentFlexibility, currentMobility } pulled from the athlete's written
+// intake -- the mobility test is intentionally downstream of that
+// questionnaire, not a standalone form.
 // Returns { unavailable: true } if no LLM is configured, otherwise
 // { assessment, flaggedLimitations, progressNote, trend, scores }
 // (progressNote/trend are null with no previous test; scores is null if the
 // model didn't return a parseable block).
-async function assessMobility(photos, previousTest = null) {
+async function assessMobility(photos, previousTest = null, athleteContext = null) {
   if (!isAvailable()) return { unavailable: true, assessment: null, flaggedLimitations: [], progressNote: null, trend: null, scores: null };
 
   const hasPrevious = !!(previousTest && previousTest.assessment);
-  const system = buildSystem(hasPrevious);
+  const system = buildSystem(hasPrevious, athleteContext);
 
   const poseLabels = photos.map((p) => fieldByKey(p.poseKey)?.label || p.poseKey).join(', ');
   let prompt = `These frames show an athlete performing: ${poseLabels}.`;

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { api, RoutineResponse, TrainingPlan, TrainingPlanDay } from '../api/client';
+import PlanCalendar from '../components/PlanCalendar';
 import { theme } from '../theme';
 
 const SORENESS_AREAS = ['back', 'neck', 'hip', 'knee', 'shoulder', 'hamstring'];
@@ -23,6 +24,7 @@ export default function PlanScreen({
   const [startingDayId, setStartingDayId] = useState<string | null>(null);
   const [soreness, setSoreness] = useState<Record<string, number>>({});
   const [checkinSaved, setCheckinSaved] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<TrainingPlanDay | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function refresh() {
@@ -80,8 +82,6 @@ export default function PlanScreen({
     );
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Pressable onPress={onBack}><Text style={styles.link}>Back</Text></Pressable>
@@ -125,24 +125,22 @@ export default function PlanScreen({
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>{plan.start_date} – {plan.end_date}</Text>
-            {days.map((day) => (
-              <View key={day.id} style={[styles.dayRow, day.scheduled_date === today && styles.dayRowToday]}>
-                <View>
-                  <Text style={styles.dayDate}>{formatDate(day.scheduled_date)}</Text>
-                  <Text style={styles.dayStatus}>{day.status === 'completed' ? 'Completed' : day.routine_id ? 'Ready' : 'Not generated yet'}</Text>
-                </View>
-                {day.status !== 'completed' && (
-                  <Pressable style={styles.startButton} onPress={() => startDay(day)} disabled={startingDayId === day.id}>
-                    {startingDayId === day.id ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.startButtonText}>Start</Text>
-                    )}
-                  </Pressable>
-                )}
-              </View>
-            ))}
+            <PlanCalendar days={days} onSelectDay={setSelectedDay} />
           </View>
+
+          {selectedDay && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>{formatDate(selectedDay.scheduled_date)}</Text>
+              <Text style={styles.subtitle}>
+                {selectedDay.status === 'completed' ? 'Completed' : selectedDay.routine_id ? 'Ready to go' : 'Not generated yet'}
+              </Text>
+              {selectedDay.status !== 'completed' && (
+                <Pressable style={styles.button} onPress={() => startDay(selectedDay)} disabled={startingDayId === selectedDay.id}>
+                  {startingDayId === selectedDay.id ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Start</Text>}
+                </Pressable>
+              )}
+            </View>
+          )}
 
           <Pressable style={styles.secondaryButton} onPress={generatePlan} disabled={generating}>
             {generating ? <ActivityIndicator color={theme.colors.primary} /> : <Text style={styles.secondaryButtonText}>Regenerate plan</Text>}
@@ -174,13 +172,4 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger },
   chipText: { color: theme.colors.text, textTransform: 'capitalize', fontSize: 13 },
   chipTextSelected: { color: '#fff' },
-  dayRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: theme.spacing(1.5), borderTopWidth: 1, borderTopColor: theme.colors.border,
-  },
-  dayRowToday: { backgroundColor: theme.colors.accent, marginHorizontal: -theme.spacing(1), paddingHorizontal: theme.spacing(1), borderRadius: 8 },
-  dayDate: { color: theme.colors.text, fontWeight: '600' },
-  dayStatus: { color: theme.colors.textMuted, fontSize: 12, marginTop: theme.spacing(0.25) },
-  startButton: { backgroundColor: theme.colors.primary, borderRadius: theme.radius, paddingHorizontal: theme.spacing(2), paddingVertical: theme.spacing(1) },
-  startButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
 });
