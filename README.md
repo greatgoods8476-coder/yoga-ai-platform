@@ -231,14 +231,22 @@ dedicated pose-estimation pipeline (ROADMAP Phase 3), not silently skipped.
 
 ### Full athlete-side flow
 
-The first-time sequence an athlete walks through end to end: a placeholder
-intro-video screen (`IntroVideoScreen`, gated behind a one-time
-`AsyncStorage` flag so it only ever shows once per device — genuinely a
-no-op today since no video asset has been supplied yet, stated honestly
-rather than faked), a "Start Now" assessment landing screen with time
-estimates for each step (`AssessmentStartScreen`), the written onboarding
-assessment, the baseline mobility test immediately after (see above for why
-that order matters), a calendar-based "Your Month, Mapped Out" plan reveal
+The first-time sequence an athlete walks through end to end: an intro-video
+screen (`IntroVideoScreen`, gated behind a one-time `AsyncStorage` flag so it
+only ever shows once per device) with a real player (`expo-video`, works on
+both native and web) and a slogan ("UNLOCK YOUR NEXT LEVEL.") rendered as a
+genuine animated text overlay — not baked into the video pixels, so it can
+be changed anytime without re-rendering footage. Real scope note, stated
+honestly: no footage has been supplied yet (`INTRO_VIDEO_URL` is `null`), so
+today the screen is a graceful no-op — point that constant at a sports
+montage clip (yours, or AI-generated once this workspace has video-
+generation credits — it currently has 0) and playback + the slogan overlay
+take over automatically, no other code changes needed.
+
+After that: a "Start Now" assessment landing screen with time estimates for
+each step (`AssessmentStartScreen`), the written onboarding assessment, the
+baseline mobility test immediately after (see above for why that order
+matters), a calendar-based "Your Month, Mapped Out" plan reveal
 (`PlanRevealScreen` + `PlanCalendar`) with a choice between customizing the
 coach avatar or auto-generating a default one from Ready Player Me's
 `quickStart` mode keyed off the onboarding-collected `instructor_gender`

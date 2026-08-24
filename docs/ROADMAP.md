@@ -155,10 +155,16 @@ bullet above and the relevant `.env.example` / README section.
       (`SCORE_KEYS`), each a 0-100 visual estimate from the same model call,
       EMA-blended into `progress_metrics` (`recordMobilityScores`) so the
       trend is smoothed rather than noisy test-to-test jumps.
-- [x] Full athlete-side flow rebuild end to end: a placeholder intro-video
-      screen (`IntroVideoScreen`, gated behind a one-time `AsyncStorage`
-      flag; genuinely a no-op until a real video asset is supplied — no
-      video exists to show yet, stated honestly rather than faked), a
+- [x] Full athlete-side flow rebuild end to end: an intro-video screen
+      (`IntroVideoScreen`, gated behind a one-time `AsyncStorage` flag) with
+      a real player (`expo-video`, works on native and web) and a slogan
+      ("UNLOCK YOUR NEXT LEVEL.") as a genuine animated text overlay, not
+      baked into the video pixels, so it changes without re-rendering
+      footage. Real scope note: no footage has been supplied yet
+      (`INTRO_VIDEO_URL` is `null`), so it's currently a graceful no-op —
+      point that constant at a sports montage clip (yours, or AI-generated
+      once this workspace has video-generation credits, currently 0) and
+      playback + overlay take over automatically. Then: a
       "Start Now" assessment landing screen with time estimates
       (`AssessmentStartScreen`), the baseline mobility test running
       immediately after the written assessment completes, a calendar-based
