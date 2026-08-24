@@ -106,4 +106,48 @@ async function recordMeditationMinutes({ userId, minutes }) {
   );
 }
 
-module.exports = { recordSessionCompletion, recordMeditationMinutes };
+// Writes a mobility test's 7-dimension scores into today's progress_metrics
+// row, EMA-blended the same way session-derived scores are -- so a Monthly
+// Exam moves the same dashboard the rest of the app shows, not a separate
+// disconnected number. scores keys: strength, mobility, stability,
+// flexibility, balance, movement_control, athletic_performance (0-100,
+// any subset may be present/missing per mobilityAssessment's parsing).
+async function recordMobilityScores({ userId, scores }) {
+  if (!scores) return;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { rows: existingRows } = await pool.query(
+    'SELECT * FROM progress_metrics WHERE user_id = $1 AND metric_date = $2',
+    [userId, today]
+  );
+  const existing = existingRows[0];
+
+  const next = {
+    flexibility_score: scores.flexibility !== undefined ? ema(existing?.flexibility_score, scores.flexibility) : existing?.flexibility_score ?? null,
+    mobility_score: scores.mobility !== undefined ? ema(existing?.mobility_score, scores.mobility) : existing?.mobility_score ?? null,
+    balance_score: scores.balance !== undefined ? ema(existing?.balance_score, scores.balance) : existing?.balance_score ?? null,
+    strength_score: scores.strength !== undefined ? ema(existing?.strength_score, scores.strength) : existing?.strength_score ?? null,
+    stability_score: scores.stability !== undefined ? ema(existing?.stability_score, scores.stability) : existing?.stability_score ?? null,
+    movement_control_score: scores.movement_control !== undefined ? ema(existing?.movement_control_score, scores.movement_control) : existing?.movement_control_score ?? null,
+    athletic_performance_score: scores.athletic_performance !== undefined ? ema(existing?.athletic_performance_score, scores.athletic_performance) : existing?.athletic_performance_score ?? null,
+  };
+
+  await pool.query(
+    `INSERT INTO progress_metrics (
+       user_id, metric_date, flexibility_score, mobility_score, balance_score, strength_score,
+       stability_score, movement_control_score, athletic_performance_score
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     ON CONFLICT (user_id, metric_date) DO UPDATE SET
+       flexibility_score = EXCLUDED.flexibility_score,
+       mobility_score = EXCLUDED.mobility_score,
+       balance_score = EXCLUDED.balance_score,
+       strength_score = EXCLUDED.strength_score,
+       stability_score = EXCLUDED.stability_score,
+       movement_control_score = EXCLUDED.movement_control_score,
+       athletic_performance_score = EXCLUDED.athletic_performance_score`,
+    [userId, today, next.flexibility_score, next.mobility_score, next.balance_score, next.strength_score,
+      next.stability_score, next.movement_control_score, next.athletic_performance_score]
+  );
+}
+
+module.exports = { recordSessionCompletion, recordMeditationMinutes, recordMobilityScores };

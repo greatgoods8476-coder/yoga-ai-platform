@@ -3,6 +3,7 @@ const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { assessMobility, MOBILITY_TEST_POSES } = require('../services/mobilityAssessment');
 const { stepLevel, levelInfo, decideLevelChange } = require('../services/levelAssessment');
+const { recordMobilityScores } = require('../services/progressMetrics');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -49,13 +50,14 @@ router.post('/tests', async (req, res) => {
   }
 
   const { rows } = await pool.query(
-    `INSERT INTO mobility_tests (user_id, photos, assessment, flagged_limitations, progress_note, trend, level_change)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING id, assessment, flagged_limitations, progress_note, trend, level_change, created_at`,
+    `INSERT INTO mobility_tests (user_id, photos, assessment, flagged_limitations, progress_note, trend, level_change, scores)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING id, assessment, flagged_limitations, progress_note, trend, level_change, scores, created_at`,
     [
       req.userId,
       JSON.stringify(photos.map((p) => ({ poseKey: p.poseKey, mediaType: p.mediaType }))),
       result.assessment, result.flaggedLimitations, result.progressNote, result.trend, levelChange,
+      result.scores ? JSON.stringify(result.scores) : null,
     ]
   );
 
@@ -64,12 +66,14 @@ router.post('/tests', async (req, res) => {
     [result.flaggedLimitations, newYogaLevel, req.userId]
   );
 
+  if (result.scores) await recordMobilityScores({ userId: req.userId, scores: result.scores });
+
   res.status(201).json({ test: rows[0], yogaLevel: levelInfo(newYogaLevel) });
 });
 
 router.get('/tests', async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT id, assessment, flagged_limitations, progress_note, trend, level_change, created_at FROM mobility_tests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 12',
+    'SELECT id, assessment, flagged_limitations, progress_note, trend, level_change, scores, created_at FROM mobility_tests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 12',
     [req.userId]
   );
   res.json({ tests: rows });
@@ -77,7 +81,7 @@ router.get('/tests', async (req, res) => {
 
 router.get('/tests/latest', async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT id, assessment, flagged_limitations, progress_note, trend, level_change, created_at FROM mobility_tests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+    'SELECT id, assessment, flagged_limitations, progress_note, trend, level_change, scores, created_at FROM mobility_tests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
     [req.userId]
   );
   res.json({ test: rows[0] || null });

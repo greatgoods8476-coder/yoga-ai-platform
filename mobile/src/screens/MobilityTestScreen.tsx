@@ -126,6 +126,22 @@ export default function MobilityTestScreen({ token, onBack }: { token: string; o
         <View style={styles.card}>
           <Text style={styles.assessmentText}>{test.assessment}</Text>
         </View>
+
+        {test.scores && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Scorecard</Text>
+            {Object.entries(test.scores).map(([key, value]) => (
+              <View key={key} style={styles.scoreRow}>
+                <Text style={styles.scoreLabel}>{key.replace(/_/g, ' ')}</Text>
+                <View style={styles.scoreBarTrack}>
+                  <View style={[styles.scoreBarFill, { width: `${value}%` }]} />
+                </View>
+                <Text style={styles.scoreValue}>{value}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {test.flagged_limitations.length > 0 && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Areas we'll focus on</Text>
@@ -226,4 +242,9 @@ const styles = StyleSheet.create({
   },
   historyDate: { color: theme.colors.textMuted, fontSize: 13 },
   historyTrend: { color: theme.colors.text, fontSize: 13, fontWeight: '600' },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1.5), paddingVertical: theme.spacing(0.75) },
+  scoreLabel: { color: theme.colors.text, fontSize: 13, textTransform: 'capitalize', width: 130 },
+  scoreBarTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: theme.colors.border, overflow: 'hidden' },
+  scoreBarFill: { height: 6, borderRadius: 3, backgroundColor: theme.colors.primary },
+  scoreValue: { color: theme.colors.textMuted, fontSize: 12, fontWeight: '600', width: 28, textAlign: 'right' },
 });

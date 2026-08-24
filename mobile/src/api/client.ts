@@ -274,6 +274,15 @@ export type DailyCheckin = {
 
 export type MobilityTestPose = { key: string; label: string; instructions: string };
 export type MobilityPhoto = { poseKey: string; mediaType: 'image/jpeg' | 'image/png'; data: string };
+export type MobilityScores = {
+  strength?: number;
+  mobility?: number;
+  stability?: number;
+  flexibility?: number;
+  balance?: number;
+  movement_control?: number;
+  athletic_performance?: number;
+};
 export type MobilityTest = {
   id: string;
   assessment: string;
@@ -281,6 +290,7 @@ export type MobilityTest = {
   progress_note: string | null;
   trend: 'improved' | 'same' | 'regressed' | null;
   level_change: 'up' | 'down' | null;
+  scores: MobilityScores | null;
   created_at: string;
 };
 export type MobilityTestSubmitResult = { test: MobilityTest; yogaLevel: YogaLevel | null };

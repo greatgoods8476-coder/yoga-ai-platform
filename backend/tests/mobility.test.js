@@ -24,7 +24,7 @@ test('POST /mobility/tests reports unavailable when no LLM is configured (test e
   const athlete = await signupAndOnboard(server.baseUrl, uniqueEmail('mobnoai'), 'password123');
   const res = await call(server.baseUrl, 'POST', '/mobility/tests', {
     token: athlete.token,
-    body: { photos: [{ poseKey: 'forward_fold', mediaType: 'image/jpeg', data: 'ZmFrZS1pbWFnZS1kYXRh' }] },
+    body: { photos: [{ poseKey: 'foot_ankle', mediaType: 'image/jpeg', data: 'ZmFrZS1pbWFnZS1kYXRh' }] },
   });
   assert.equal(res.status, 409);
   assert.equal(res.body.error, 'AI mobility assessment is not configured on this server');
@@ -45,12 +45,12 @@ test('POST /mobility/tests validates photos before ever calling the model', asyn
   assert.equal(badPose.status, 400);
 
   const badMediaType = await call(server.baseUrl, 'POST', '/mobility/tests', {
-    token: athlete.token, body: { photos: [{ poseKey: 'forward_fold', mediaType: 'image/gif', data: 'abc' }] },
+    token: athlete.token, body: { photos: [{ poseKey: 'foot_ankle', mediaType: 'image/gif', data: 'abc' }] },
   });
   assert.equal(badMediaType.status, 400);
 
   const missingData = await call(server.baseUrl, 'POST', '/mobility/tests', {
-    token: athlete.token, body: { photos: [{ poseKey: 'forward_fold', mediaType: 'image/jpeg' }] },
+    token: athlete.token, body: { photos: [{ poseKey: 'foot_ankle', mediaType: 'image/jpeg' }] },
   });
   assert.equal(missingData.status, 400);
 });
@@ -68,7 +68,7 @@ test('POST /mobility/tests still 409s cleanly (no crash) when a prior test exist
 
   const res = await call(server.baseUrl, 'POST', '/mobility/tests', {
     token: athlete.token,
-    body: { photos: [{ poseKey: 'forward_fold', mediaType: 'image/jpeg', data: 'ZmFrZS1pbWFnZS1kYXRh' }] },
+    body: { photos: [{ poseKey: 'foot_ankle', mediaType: 'image/jpeg', data: 'ZmFrZS1pbWFnZS1kYXRh' }] },
   });
   assert.equal(res.status, 409);
 

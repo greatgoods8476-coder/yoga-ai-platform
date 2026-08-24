@@ -96,7 +96,7 @@ router.get('/:id/athletes/:userId', async (req, res) => {
   }
 
   const { rows: mobilityRows } = await pool.query(
-    `SELECT id, assessment, flagged_limitations, progress_note, trend, level_change, created_at
+    `SELECT id, assessment, flagged_limitations, progress_note, trend, level_change, scores, created_at
      FROM mobility_tests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
     [req.params.userId]
   );
