@@ -231,17 +231,17 @@ dedicated pose-estimation pipeline (ROADMAP Phase 3), not silently skipped.
 
 ### Full athlete-side flow
 
-The first-time sequence an athlete walks through end to end: an intro-video
-screen (`IntroVideoScreen`, gated behind a one-time `AsyncStorage` flag so it
-only ever shows once per device) with a real player (`expo-video`, works on
-both native and web) and a slogan ("UNLOCK YOUR NEXT LEVEL.") rendered as a
-genuine animated text overlay — not baked into the video pixels, so it can
-be changed anytime without re-rendering footage. Real scope note, stated
-honestly: no footage has been supplied yet (`INTRO_VIDEO_URL` is `null`), so
-today the screen is a graceful no-op — point that constant at a sports
-montage clip (yours, or AI-generated once this workspace has video-
-generation credits — it currently has 0) and playback + the slogan overlay
-take over automatically, no other code changes needed.
+The first-time sequence an athlete walks through end to end: a first-open
+welcome moment (`WelcomeScreen`, gated behind a one-time `AsyncStorage` flag
+so it only ever shows once per device) — no video, no external footage, no
+generation dependency. Three animated "level" bars stack up in sequence
+(echoing the app's actual level/progression system), the slogan ("UNLOCK
+YOUR NEXT LEVEL.") and a subline fade in underneath, and the screen becomes
+tappable to continue, auto-advancing a couple seconds later regardless so
+nobody gets stuck on a splash screen. Deliberately built this way instead of
+around licensed or AI-generated video footage: it ships today with zero
+rights risk and zero dependency on this workspace's video-generation
+credits (currently 0).
 
 After that: a "Start Now" assessment landing screen with time estimates for
 each step (`AssessmentStartScreen`), the written onboarding assessment, the

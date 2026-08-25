@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, RoutineResponse } from './src/api/client';
 import { AuthProvider, useAuth } from './src/state/AuthContext';
 import AuthScreen from './src/screens/AuthScreen';
-import IntroVideoScreen from './src/screens/IntroVideoScreen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
 import AssessmentStartScreen from './src/screens/AssessmentStartScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import MobilityTestScreen from './src/screens/MobilityTestScreen';
@@ -112,7 +112,7 @@ function InnerApp() {
     }
     if (!introSeen) {
       return (
-        <IntroVideoScreen
+        <WelcomeScreen
           onDone={() => {
             AsyncStorage.setItem(INTRO_SEEN_KEY, '1').catch(() => {});
             setIntroSeen(true);
