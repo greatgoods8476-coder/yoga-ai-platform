@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -57,10 +57,6 @@ export default function MobilityTestScreen({
 
   async function recordCurrentPose() {
     if (!currentPose) return;
-    if (Platform.OS === 'web') {
-      setError('Video capture works on the mobile app (Expo Go or a device build), not in this web preview.');
-      return;
-    }
 
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
