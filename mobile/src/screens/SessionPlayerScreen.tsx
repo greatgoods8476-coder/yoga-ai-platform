@@ -15,7 +15,6 @@ export default function SessionPlayerScreen({
   const [sessionLogId, setSessionLogId] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(routine.items[0]?.duration_sec ?? 0);
-  const [skipped, setSkipped] = useState<string[]>([]);
   const [phase, setPhase] = useState<Phase>('practicing');
   const [difficulty, setDifficulty] = useState<'too_easy' | 'just_right' | 'too_hard' | null>(null);
   const [enjoyment, setEnjoyment] = useState<number | null>(null);
@@ -57,8 +56,7 @@ export default function SessionPlayerScreen({
     };
   }, [index, phase]);
 
-  function advance(skip = false) {
-    if (skip && current) setSkipped((prev) => [...prev, current.pose.id]);
+  function advance() {
     if (index + 1 < routine.items.length) {
       setIndex(index + 1);
       setSecondsLeft(routine.items[index + 1].duration_sec);
@@ -69,11 +67,9 @@ export default function SessionPlayerScreen({
 
   async function submitFeedback() {
     if (!sessionLogId) return;
-    const completionPct = Math.round(((routine.items.length - skipped.length) / routine.items.length) * 100);
     const parsedHeartRate = avgHeartRate.trim() ? Number(avgHeartRate) : undefined;
     await api.completeSession(token, sessionLogId, {
-      completionPct,
-      skippedPoseIds: skipped,
+      completionPct: 100,
       difficultyFeedback: difficulty || undefined,
       enjoymentRating: enjoyment || undefined,
       avgHeartRate: parsedHeartRate,
@@ -144,18 +140,13 @@ export default function SessionPlayerScreen({
         <Text style={styles.benefits}>Benefits: {current.pose.benefits.join(', ')}</Text>
       )}
 
-      <View style={styles.row}>
-        <Pressable style={styles.secondaryButton} onPress={() => advance(true)}>
-          <Text style={styles.secondaryButtonText}>Skip</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.primaryButton, secondsLeft > 0 && styles.primaryButtonDisabled]}
-          onPress={() => advance(false)}
-          disabled={secondsLeft > 0}
-        >
-          <Text style={styles.primaryButtonText}>{secondsLeft > 0 ? `Hold for ${secondsLeft}s` : 'Next pose'}</Text>
-        </Pressable>
-      </View>
+      <Pressable
+        style={[styles.primaryButton, secondsLeft > 0 && styles.primaryButtonDisabled]}
+        onPress={advance}
+        disabled={secondsLeft > 0}
+      >
+        <Text style={styles.primaryButtonText}>{secondsLeft > 0 ? `Hold for ${secondsLeft}s` : 'Next pose'}</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -183,6 +174,4 @@ const styles = StyleSheet.create({
   primaryButton: { backgroundColor: theme.colors.primary, borderRadius: theme.radius, paddingVertical: theme.spacing(2), paddingHorizontal: theme.spacing(3), alignItems: 'center' },
   primaryButtonDisabled: { backgroundColor: theme.colors.border },
   primaryButtonText: { color: '#fff', fontWeight: '600' },
-  secondaryButton: { borderRadius: theme.radius, paddingVertical: theme.spacing(2), paddingHorizontal: theme.spacing(3), alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border },
-  secondaryButtonText: { color: theme.colors.textMuted, fontWeight: '600' },
 });

@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api, RoutineResponse, TrainingPlan, TrainingPlanDay } from '../api/client';
 import PlanCalendar from '../components/PlanCalendar';
 import { theme } from '../theme';
-
-const SORENESS_AREAS = ['back', 'neck', 'hip', 'knee', 'shoulder', 'hamstring'];
 
 function formatDate(dateStr: string) {
   const d = new Date(`${dateStr}T00:00:00Z`);
@@ -21,8 +19,9 @@ export default function PlanScreen({
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [days, setDays] = useState<TrainingPlanDay[] | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [regenerated, setRegenerated] = useState(false);
   const [startingDayId, setStartingDayId] = useState<string | null>(null);
-  const [soreness, setSoreness] = useState<Record<string, number>>({});
+  const [sorenessText, setSorenessText] = useState('');
   const [checkinSaved, setCheckinSaved] = useState(false);
   const [selectedDay, setSelectedDay] = useState<TrainingPlanDay | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +40,11 @@ export default function PlanScreen({
   async function generatePlan() {
     setGenerating(true);
     setError(null);
+    setRegenerated(false);
     try {
       await api.generatePlan(token);
       await refresh();
+      setRegenerated(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not generate your plan.');
     } finally {
@@ -65,10 +66,10 @@ export default function PlanScreen({
   }
 
   async function submitCheckin() {
+    setError(null);
     try {
-      await api.submitCheckin(token, soreness);
+      await api.submitCheckin(token, sorenessText);
       setCheckinSaved(true);
-      setSoreness({});
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save your check-in.');
     }
@@ -102,22 +103,16 @@ export default function PlanScreen({
         <>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Daily check-in</Text>
-            <Text style={styles.subtitle}>Anything sore today? We'll steer today's poses around it.</Text>
-            <View style={styles.chipsRow}>
-              {SORENESS_AREAS.map((area) => (
-                <Pressable
-                  key={area}
-                  style={[styles.chip, !!soreness[area] && styles.chipSelected]}
-                  onPress={() => setSoreness((prev) => {
-                    const next = { ...prev };
-                    if (next[area]) delete next[area]; else next[area] = 3;
-                    return next;
-                  })}
-                >
-                  <Text style={[styles.chipText, !!soreness[area] && styles.chipTextSelected]}>{area}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <Text style={styles.subtitle}>Anything sore or bothering you today? Tell us in your own words — we'll steer today's poses around it.</Text>
+            <TextInput
+              style={styles.textArea}
+              multiline
+              numberOfLines={3}
+              placeholder="e.g. my hamstrings are pretty tight and my left shoulder is a little sore"
+              placeholderTextColor={theme.colors.textMuted}
+              value={sorenessText}
+              onChangeText={(t) => { setSorenessText(t); setCheckinSaved(false); }}
+            />
             <Pressable style={styles.secondaryButton} onPress={submitCheckin}>
               <Text style={styles.secondaryButtonText}>{checkinSaved ? 'Saved ✓' : 'Save check-in'}</Text>
             </Pressable>
@@ -143,7 +138,11 @@ export default function PlanScreen({
           )}
 
           <Pressable style={styles.secondaryButton} onPress={generatePlan} disabled={generating}>
-            {generating ? <ActivityIndicator color={theme.colors.primary} /> : <Text style={styles.secondaryButtonText}>Regenerate plan</Text>}
+            {generating ? (
+              <ActivityIndicator color={theme.colors.primary} />
+            ) : (
+              <Text style={styles.secondaryButtonText}>{regenerated ? 'Plan regenerated ✓' : 'Regenerate plan'}</Text>
+            )}
           </Pressable>
         </>
       )}
@@ -167,9 +166,9 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontWeight: '600' },
   secondaryButton: { borderRadius: theme.radius, padding: theme.spacing(1.5), alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border },
   secondaryButtonText: { color: theme.colors.primary, fontWeight: '600' },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing(1), marginBottom: theme.spacing(2) },
-  chip: { paddingHorizontal: theme.spacing(1.5), paddingVertical: theme.spacing(0.75), borderRadius: theme.radius, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.background },
-  chipSelected: { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger },
-  chipText: { color: theme.colors.text, textTransform: 'capitalize', fontSize: 13 },
-  chipTextSelected: { color: '#fff' },
+  textArea: {
+    borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius, backgroundColor: theme.colors.background,
+    padding: theme.spacing(1.5), color: theme.colors.text, fontSize: 14, minHeight: 72, textAlignVertical: 'top',
+    marginBottom: theme.spacing(2),
+  },
 });

@@ -101,8 +101,10 @@ export const api = {
     request<RoutineResponse>('POST', `/plans/days/${dayId}/generate-routine`, { token }),
   linkPlanDaySession: (token: string, dayId: string, sessionLogId: string) =>
     request<{ day: TrainingPlanDay }>('POST', `/plans/days/${dayId}/link-session`, { token, body: { sessionLogId } }),
-  submitCheckin: (token: string, soreness: Record<string, number>, notes?: string) =>
-    request<{ checkin: DailyCheckin; adaptationState: unknown }>('POST', '/plans/checkins', { token, body: { soreness, notes } }),
+  submitCheckin: (token: string, sorenessText: string) =>
+    request<{ checkin: DailyCheckin; adaptationState: unknown; sorenessUnavailable: boolean }>(
+      'POST', '/plans/checkins', { token, body: { sorenessText } }
+    ),
   checkins: (token: string) => request<{ checkins: DailyCheckin[] }>('GET', '/plans/checkins', { token }),
 
   mobilityTestPoses: (token: string) => request<{ poses: MobilityTestPose[] }>('GET', '/mobility/test-poses', { token }),

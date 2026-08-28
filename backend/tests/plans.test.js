@@ -91,24 +91,29 @@ test('link-session rejects a session that was never completed', async (t) => {
   assert.equal(linked.status, 404);
 });
 
-test('POST /plans/checkins records soreness and folds it into adaptation_state via the existing engine', async (t) => {
+test('POST /plans/checkins accepts a free-text soreness answer, saves it as notes, and folds any parsed soreness into adaptation_state via the existing engine', async (t) => {
   const server = await startTestServer();
   t.after(() => server.close());
 
   const athlete = await signupAndOnboard(server.baseUrl, uniqueEmail('plan5'), 'password123');
 
   const checkin = await call(server.baseUrl, 'POST', '/plans/checkins', {
-    token: athlete.token, body: { soreness: { hamstrings: 3 }, notes: 'tight after yesterday' },
+    token: athlete.token, body: { sorenessText: 'my hamstrings are pretty tight after yesterday' },
   });
   assert.equal(checkin.status, 201);
-  assert.equal(checkin.body.adaptationState.sorenessAreas.hamstrings, 3);
+  assert.equal(checkin.body.checkin.notes, 'my hamstrings are pretty tight after yesterday');
+  // no ANTHROPIC_API_KEY in the test environment -- graceful degrade path,
+  // same as the rest of the AI features: the check-in still saves, it just
+  // can't extract structured soreness without a model call.
+  assert.equal(checkin.body.sorenessUnavailable, true);
+  assert.deepEqual(checkin.body.checkin.soreness, {});
 
   const { rows } = await pool.query('SELECT adaptation_state FROM user_profiles WHERE user_id = $1', [athlete.userId]);
-  assert.equal(rows[0].adaptation_state.sorenessAreas.hamstrings, 3);
+  assert.deepEqual(rows[0].adaptation_state.sorenessAreas || {}, {});
 
   // same-day check-in updates rather than duplicating
   const again = await call(server.baseUrl, 'POST', '/plans/checkins', {
-    token: athlete.token, body: { soreness: { hamstrings: 1 } },
+    token: athlete.token, body: { sorenessText: 'feeling good today' },
   });
   assert.equal(again.status, 201);
 
@@ -116,11 +121,11 @@ test('POST /plans/checkins records soreness and folds it into adaptation_state v
   assert.equal(list.body.checkins.length, 1);
 });
 
-test('POST /plans/checkins rejects a non-object soreness payload', async (t) => {
+test('POST /plans/checkins rejects a non-string sorenessText payload', async (t) => {
   const server = await startTestServer();
   t.after(() => server.close());
 
   const athlete = await signupAndOnboard(server.baseUrl, uniqueEmail('plan6'), 'password123');
-  const res = await call(server.baseUrl, 'POST', '/plans/checkins', { token: athlete.token, body: { soreness: 'a lot' } });
+  const res = await call(server.baseUrl, 'POST', '/plans/checkins', { token: athlete.token, body: { sorenessText: { hamstrings: 3 } } });
   assert.equal(res.status, 400);
 });

@@ -4,6 +4,7 @@ const { requireAuth } = require('../middleware/auth');
 const { generateRoutine } = require('../services/routineGenerator');
 const { applyFeedback } = require('../services/adaptationEngine');
 const { pickScheduledDates } = require('../services/planGenerator');
+const { parseSorenessText } = require('../services/sorenessParser');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -153,19 +154,24 @@ router.post('/days/:dayId/link-session', async (req, res) => {
   res.json({ day: rows[0] });
 });
 
-// A daily check-in feeds straight into the *existing* adaptation engine
-// (applyFeedback) as a painReported event -- same mechanism a completed
-// session's soreness report uses -- so it naturally decays over time and
-// down-weights aggravating poses in whichever day's routine gets generated
-// next, without a second parallel "assistance" system.
+// A daily check-in is the athlete's own words ("what's sore today?") --
+// parsed server-side into the exact body-area vocabulary routineGenerator
+// already checks pose.primary_muscles against, then fed straight into the
+// *existing* adaptation engine (applyFeedback) as a painReported event --
+// same mechanism a completed session's soreness report uses -- so it
+// naturally decays over time and down-weights aggravating poses in
+// whichever day's routine gets generated next (including today's, if it
+// hasn't been generated yet), without a second parallel "assistance" system.
 router.post('/checkins', async (req, res) => {
-  const { soreness = {}, notes } = req.body || {};
-  if (typeof soreness !== 'object' || Array.isArray(soreness) || soreness === null) {
-    return res.status(400).json({ error: 'soreness must be an object of area -> severity' });
+  const { sorenessText } = req.body || {};
+  if (sorenessText !== undefined && typeof sorenessText !== 'string') {
+    return res.status(400).json({ error: 'sorenessText must be a string' });
   }
 
   const { rows: profileRows } = await pool.query('SELECT adaptation_state FROM user_profiles WHERE user_id = $1', [req.userId]);
   if (profileRows.length === 0) return res.status(404).json({ error: 'profile not found' });
+
+  const { soreness, unavailable } = await parseSorenessText(sorenessText);
 
   const nextState = applyFeedback(profileRows[0].adaptation_state || {}, { painReported: soreness });
   await pool.query('UPDATE user_profiles SET adaptation_state = $1, updated_at = now() WHERE user_id = $2', [nextState, req.userId]);
@@ -174,9 +180,9 @@ router.post('/checkins', async (req, res) => {
     `INSERT INTO daily_checkins (user_id, soreness, notes) VALUES ($1, $2, $3)
      ON CONFLICT (user_id, checkin_date) DO UPDATE SET soreness = $2, notes = $3
      RETURNING *`,
-    [req.userId, JSON.stringify(soreness), notes || null]
+    [req.userId, JSON.stringify(soreness), sorenessText?.trim() || null]
   );
-  res.status(201).json({ checkin: rows[0], adaptationState: nextState });
+  res.status(201).json({ checkin: rows[0], adaptationState: nextState, sorenessUnavailable: unavailable });
 });
 
 router.get('/checkins', async (req, res) => {
