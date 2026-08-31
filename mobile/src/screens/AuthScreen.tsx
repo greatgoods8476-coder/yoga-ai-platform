@@ -27,6 +27,7 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.wordmark}>FlexIQ</Text>
       <Text style={styles.title}>Your practice, personalized.</Text>
       <Text style={styles.subtitle}>A private yoga & meditation coach that adapts to you.</Text>
 
@@ -67,6 +68,7 @@ export default function AuthScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background, padding: theme.spacing(3), justifyContent: 'center' },
+  wordmark: { fontSize: 15, fontWeight: '800', letterSpacing: 2, color: theme.colors.primary, marginBottom: theme.spacing(2) },
   title: { fontSize: 26, fontWeight: '600', color: theme.colors.text, marginBottom: theme.spacing(1) },
   subtitle: { fontSize: 15, color: theme.colors.textMuted, marginBottom: theme.spacing(4) },
   input: {

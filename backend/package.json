@@ -1,5 +1,5 @@
 {
-  "name": "yoga-ai-backend",
+  "name": "flexiq-backend",
   "version": "0.1.0",
   "private": true,
   "main": "src/server.js",

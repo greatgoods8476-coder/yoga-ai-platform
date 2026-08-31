@@ -1,8 +1,8 @@
-# AI Yoga & Meditation Platform
+# FlexIQ
 
-Phase 1 foundation for a personalized AI yoga, mobility, breathing, and
-meditation platform. See `docs/ARCHITECTURE.md` for what's built vs. deferred,
-and `docs/ROADMAP.md` for what comes next.
+An AI-powered mobility, flexibility, and performance training platform for
+athletes and the college programs that coach them. See `docs/ARCHITECTURE.md`
+for what's built vs. deferred, and `docs/ROADMAP.md` for what comes next.
 
 ## Backend (`backend/`)
 

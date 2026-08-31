@@ -46,6 +46,8 @@ export default function WelcomeScreen({ onDone }: { onDone: () => void }) {
 
   return (
     <Pressable style={styles.container} onPress={finish}>
+      <Text style={styles.wordmark}>FlexIQ</Text>
+
       <View style={styles.barsRow}>
         {BAR_HEIGHTS.map((h, i) => (
           <Animated.View
@@ -76,6 +78,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1, backgroundColor: theme.colors.primaryDark,
     alignItems: 'center', justifyContent: 'center', padding: theme.spacing(4),
+  },
+  wordmark: {
+    color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '800', letterSpacing: 2,
+    position: 'absolute', top: theme.spacing(8),
   },
   barsRow: {
     flexDirection: 'row', alignItems: 'flex-end', gap: theme.spacing(1.5),
