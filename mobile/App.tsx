@@ -42,6 +42,7 @@ function InnerApp() {
   const [introSeen, setIntroSeen] = useState<boolean | null>(null);
   const [assessmentStarted, setAssessmentStarted] = useState(false);
   const [firstTimeStep, setFirstTimeStep] = useState<FirstTimeStep>(null);
+  const [resumeChecked, setResumeChecked] = useState(false);
   const [screen, setScreen] = useState<Screen>('home');
   const [activeRoutine, setActiveRoutine] = useState<RoutineResponse | null>(null);
   const [activePlanDayId, setActivePlanDayId] = useState<string | null>(null);
@@ -55,12 +56,39 @@ function InnerApp() {
       setIntroSeen(null);
       setAssessmentStarted(false);
       setFirstTimeStep(null);
+      setResumeChecked(false);
       return;
     }
     api.myOrgs(token).then((r) => setIsCoach(r.organizations.some((o) => o.role === 'coach')));
     api.onboardingStatus(token).then((r) => setOnboardingCompleted(r.onboardingCompleted));
     AsyncStorage.getItem(INTRO_SEEN_KEY).then((stored) => setIntroSeen(!!stored));
   }, [token]);
+
+  // firstTimeStep only ever advances via in-memory callbacks (OnboardingScreen's
+  // onComplete, etc.) -- it is NOT persisted. If the app reloads after the
+  // written assessment finishes (so onboarding_completed is already true
+  // server-side) but before the mobility test / plan reveal / avatar setup
+  // finish, firstTimeStep resets to null on the next mount and the rest of
+  // the sequence would silently vanish, dumping the athlete straight onto
+  // Home. So once onboarding is confirmed complete, check real server state
+  // once per login to resume at the correct step instead of trusting memory.
+  useEffect(() => {
+    if (!token || onboardingCompleted !== true || isCoach !== false || resumeChecked) return;
+    let cancelled = false;
+    Promise.all([api.latestMobilityTest(token), api.currentPlan(token)])
+      .then(([testRes, planRes]) => {
+        if (cancelled) return;
+        if (!testRes.test) setFirstTimeStep('mobility');
+        else if (!planRes.plan) setFirstTimeStep('planReveal');
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setResumeChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, onboardingCompleted, isCoach, resumeChecked]);
 
   if (loading) {
     return (
@@ -73,6 +101,17 @@ function InnerApp() {
   if (!token) return <AuthScreen />;
 
   if (isCoach === null || onboardingCompleted === null) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background }}>
+        <ActivityIndicator color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  // Wait for the resume check above before rendering anything for a
+  // non-coach athlete whose onboarding is already complete -- otherwise
+  // Home would flash on screen for a moment before firstTimeStep gets set.
+  if (!isCoach && onboardingCompleted && !resumeChecked) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background }}>
         <ActivityIndicator color={theme.colors.primary} />
