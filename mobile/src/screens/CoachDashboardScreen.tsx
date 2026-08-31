@@ -67,23 +67,37 @@ export default function CoachDashboardScreen({
         <Pressable onPress={onLogout}><Text style={styles.link}>Log out</Text></Pressable>
       </View>
 
+      {roster.some((r) => r.needsAttention) && (
+        <View style={styles.attentionBanner}>
+          <Text style={styles.attentionBannerText}>
+            {roster.filter((r) => r.needsAttention).length} athlete{roster.filter((r) => r.needsAttention).length === 1 ? '' : 's'} need attention — flagged below
+          </Text>
+        </View>
+      )}
+
       <FlatList
         data={roster}
         keyExtractor={(item) => item.user_id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
           <Pressable
-            style={styles.row}
+            style={[styles.row, item.needsAttention && styles.rowFlagged]}
             onPress={() => org && onSelectAthlete(org.id, item.user_id)}
           >
             <View style={styles.rowMain}>
-              <Text style={styles.name}>{item.display_name || item.email}</Text>
+              <View style={styles.nameRow}>
+                {item.needsAttention && <View style={styles.attentionDot} />}
+                <Text style={styles.name}>{item.display_name || item.email}</Text>
+              </View>
               <Text style={styles.meta}>
                 {item.sport || '—'}{item.athletic_position ? ` · ${item.athletic_position}` : ''}
                 {item.season_phase ? ` · ${item.season_phase.replace('_', ' ')}` : ''}
               </Text>
               {item.primary_athletic_goal && (
                 <Text style={styles.goal}>{GOAL_LABELS[item.primary_athletic_goal] || item.primary_athletic_goal}</Text>
+              )}
+              {item.needsAttention && (
+                <Text style={styles.attentionText}>{item.attentionReasons.join(' · ')}</Text>
               )}
             </View>
             <View style={styles.rowSide}>
@@ -112,15 +126,24 @@ const styles = StyleSheet.create({
   subtitle: { color: theme.colors.textMuted, marginTop: theme.spacing(0.25) },
   link: { color: theme.colors.primary, fontWeight: '600' },
   list: { paddingHorizontal: theme.spacing(3), paddingBottom: theme.spacing(4) },
+  attentionBanner: {
+    marginHorizontal: theme.spacing(3), marginBottom: theme.spacing(2), backgroundColor: '#FBEAE7',
+    borderRadius: theme.radius, borderWidth: 1, borderColor: theme.colors.danger, padding: theme.spacing(1.5),
+  },
+  attentionBannerText: { color: theme.colors.danger, fontWeight: '600', fontSize: 13 },
   row: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: theme.colors.surface, borderRadius: theme.radius, borderWidth: 1, borderColor: theme.colors.border,
     padding: theme.spacing(2), marginBottom: theme.spacing(1.5),
   },
+  rowFlagged: { borderColor: theme.colors.danger },
   rowMain: { flex: 1, marginRight: theme.spacing(2) },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1) },
+  attentionDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.danger },
   name: { fontSize: 16, fontWeight: '600', color: theme.colors.text },
   meta: { color: theme.colors.textMuted, fontSize: 13, marginTop: theme.spacing(0.25), textTransform: 'capitalize' },
   goal: { color: theme.colors.primaryDark, fontSize: 12, fontWeight: '600', marginTop: theme.spacing(0.5) },
+  attentionText: { color: theme.colors.danger, fontSize: 12, marginTop: theme.spacing(0.5) },
   rowSide: { alignItems: 'flex-end' },
   level: { fontWeight: '600', color: theme.colors.primary, fontSize: 13, textAlign: 'right' },
   pending: { color: theme.colors.textMuted, fontSize: 12, fontStyle: 'italic' },

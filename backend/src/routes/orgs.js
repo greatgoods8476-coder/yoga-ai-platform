@@ -49,21 +49,72 @@ router.get('/mine', async (req, res) => {
   res.json({ organizations: rows });
 });
 
+const INACTIVE_DAYS_THRESHOLD = 10;
+const SORE_SEVERITY_THRESHOLD = 3;
+
+// Turns the raw signals the app already tracks per athlete into a single
+// scannable flag + the specific reasons why -- a coach managing a roster of
+// 20-80 athletes needs to know who to look at first, not just a directory.
+function computeAttention({ currentInjuries, sorenessAreas, latestTrend, daysSinceLastSession, onboardingCompleted }) {
+  const reasons = [];
+  const injuries = (currentInjuries || []).filter((v) => v && v.toLowerCase() !== 'none');
+  if (injuries.length > 0) reasons.push(`current injury reported: ${injuries.join(', ')}`);
+
+  const soreAreas = Object.entries(sorenessAreas || {}).filter(([, v]) => Number(v) >= SORE_SEVERITY_THRESHOLD).map(([k]) => k);
+  if (soreAreas.length > 0) reasons.push(`sore: ${soreAreas.join(', ').replace(/_/g, ' ')}`);
+
+  if (latestTrend === 'regressed') reasons.push('mobility trend regressed on last test');
+
+  if (onboardingCompleted && (daysSinceLastSession === null || daysSinceLastSession > INACTIVE_DAYS_THRESHOLD)) {
+    reasons.push(daysSinceLastSession === null ? 'no session completed yet' : `no session in ${daysSinceLastSession} days`);
+  }
+
+  return { needsAttention: reasons.length > 0, attentionReasons: reasons };
+}
+
 router.get('/:id/roster', async (req, res) => {
   if (!(await isCoachOfOrg(req.params.id, req.userId))) return res.status(403).json({ error: 'not a coach of this organization' });
 
   const { rows } = await pool.query(
     `SELECT u.id AS user_id, u.email, u.display_name,
             p.sport, p.athletic_position, p.season_phase, p.primary_athletic_goal,
-            p.yoga_level, p.onboarding_completed
+            p.yoga_level, p.onboarding_completed, p.current_injuries, p.adaptation_state,
+            mt.trend AS latest_trend, mt.created_at AS latest_mobility_test_at,
+            sl.completed_at AS last_session_completed_at
      FROM org_memberships om
      JOIN users u ON u.id = om.user_id
      JOIN user_profiles p ON p.user_id = u.id
+     LEFT JOIN LATERAL (
+       SELECT trend, created_at FROM mobility_tests WHERE user_id = u.id ORDER BY created_at DESC LIMIT 1
+     ) mt ON true
+     LEFT JOIN LATERAL (
+       SELECT completed_at FROM session_logs WHERE user_id = u.id AND completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT 1
+     ) sl ON true
      WHERE om.org_id = $1 AND om.role = 'athlete'
      ORDER BY u.display_name NULLS LAST, u.email`,
     [req.params.id]
   );
-  res.json({ roster: rows });
+
+  const roster = rows.map((r) => {
+    const daysSinceLastSession = r.last_session_completed_at
+      ? Math.floor((Date.now() - new Date(r.last_session_completed_at).getTime()) / 86400000)
+      : null;
+    const { needsAttention, attentionReasons } = computeAttention({
+      currentInjuries: r.current_injuries,
+      sorenessAreas: r.adaptation_state?.sorenessAreas,
+      latestTrend: r.latest_trend,
+      daysSinceLastSession,
+      onboardingCompleted: r.onboarding_completed,
+    });
+    const { adaptation_state, current_injuries, latest_mobility_test_at, last_session_completed_at, ...rest } = r;
+    return { ...rest, daysSinceLastSession, needsAttention, attentionReasons };
+  });
+
+  // Athletes needing attention surface first -- everyone else keeps the
+  // existing alphabetical order beneath them.
+  roster.sort((a, b) => Number(b.needsAttention) - Number(a.needsAttention));
+
+  res.json({ roster });
 });
 
 router.get('/:id/athletes/:userId', async (req, res) => {
@@ -97,11 +148,43 @@ router.get('/:id/athletes/:userId', async (req, res) => {
 
   const { rows: mobilityRows } = await pool.query(
     `SELECT id, assessment, flagged_limitations, progress_note, trend, level_change, scores, created_at
-     FROM mobility_tests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+     FROM mobility_tests WHERE user_id = $1 ORDER BY created_at DESC LIMIT 6`,
     [req.params.userId]
   );
 
-  res.json({ profile: profileRows[0], latestRoutine, latestMobilityTest: mobilityRows[0] || null });
+  const { rows: checkinRows } = await pool.query(
+    'SELECT checkin_date, soreness, notes FROM daily_checkins WHERE user_id = $1 ORDER BY checkin_date DESC LIMIT 7',
+    [req.params.userId]
+  );
+
+  const { rows: planRows } = await pool.query(
+    `SELECT id, start_date, end_date, status FROM training_plans WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [req.params.userId]
+  );
+  let planAdherence = null;
+  if (planRows.length > 0) {
+    const { rows: dayCounts } = await pool.query(
+      `SELECT count(*)::int AS total, count(*) FILTER (WHERE status = 'completed')::int AS completed
+       FROM training_plan_days WHERE plan_id = $1`,
+      [planRows[0].id]
+    );
+    planAdherence = {
+      startDate: planRows[0].start_date,
+      endDate: planRows[0].end_date,
+      status: planRows[0].status,
+      totalDays: dayCounts[0].total,
+      completedDays: dayCounts[0].completed,
+    };
+  }
+
+  res.json({
+    profile: profileRows[0],
+    latestRoutine,
+    latestMobilityTest: mobilityRows[0] || null,
+    mobilityTestHistory: mobilityRows,
+    recentCheckins: checkinRows,
+    planAdherence,
+  });
 });
 
 // Adds an existing user (by email) to the org as an athlete. Real

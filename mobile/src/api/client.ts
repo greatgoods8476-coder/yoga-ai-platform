@@ -225,6 +225,17 @@ export type RosterAthlete = {
   primary_athletic_goal: string | null;
   yoga_level: string | null;
   onboarding_completed: boolean;
+  daysSinceLastSession: number | null;
+  needsAttention: boolean;
+  attentionReasons: string[];
+};
+
+export type PlanAdherence = {
+  startDate: string;
+  endDate: string;
+  status: string;
+  totalDays: number;
+  completedDays: number;
 };
 
 export type AthleteDetail = {
@@ -247,6 +258,9 @@ export type AthleteDetail = {
   };
   latestRoutine: RoutineResponse | null;
   latestMobilityTest: MobilityTest | null;
+  mobilityTestHistory: MobilityTest[];
+  recentCheckins: { checkin_date: string; soreness: Record<string, number>; notes: string | null }[];
+  planAdherence: PlanAdherence | null;
 };
 
 export type TrainingPlan = {

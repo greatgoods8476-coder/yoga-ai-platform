@@ -44,8 +44,9 @@ export default function CoachAthleteDetailScreen({
     );
   }
 
-  const { profile, latestRoutine, latestMobilityTest } = detail;
+  const { profile, latestRoutine, latestMobilityTest, mobilityTestHistory, recentCheckins, planAdherence } = detail;
   const painEntries = Object.entries(profile.joint_pain || {}).filter(([, v]) => v > 0);
+  const scoreEntries = Object.entries(latestMobilityTest?.scores || {}) as [string, number][];
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -94,7 +95,72 @@ export default function CoachAthleteDetailScreen({
               <Text style={styles.meta}>Flagged: {latestMobilityTest.flagged_limitations.join(', ').replace(/_/g, ' ')}</Text>
             )}
             <Text style={styles.testDate}>{new Date(latestMobilityTest.created_at).toLocaleDateString()}</Text>
+
+            {scoreEntries.length > 0 && (
+              <View style={styles.scoresBlock}>
+                {scoreEntries.map(([key, value]) => (
+                  <View key={key} style={styles.scoreRow}>
+                    <Text style={styles.scoreLabel}>{key.replace(/_/g, ' ')}</Text>
+                    <View style={styles.scoreBarTrack}>
+                      <View style={[styles.scoreBarFill, { width: `${value}%` }]} />
+                    </View>
+                    <Text style={styles.scoreValue}>{value}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {mobilityTestHistory.length > 1 && (
+              <View style={styles.historyBlock}>
+                <Text style={styles.miniHeading}>Test history</Text>
+                {mobilityTestHistory.map((t) => (
+                  <View key={t.id} style={styles.historyRow}>
+                    <Text style={styles.historyDate}>{new Date(t.created_at).toLocaleDateString()}</Text>
+                    <Text style={styles.historyTrend}>
+                      {t.trend === 'improved' ? '↑ improved' : t.trend === 'regressed' ? '↓ regressed' : t.trend === 'same' ? '→ steady' : 'baseline'}
+                      {t.flagged_limitations.length > 0 ? ` · ${t.flagged_limitations.length} flagged` : ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </>
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Plan adherence</Text>
+        {!planAdherence ? (
+          <Text style={styles.empty}>No training plan generated yet.</Text>
+        ) : (
+          <>
+            <Text style={styles.assessmentText}>
+              {planAdherence.completedDays} / {planAdherence.totalDays} scheduled sessions completed this month
+            </Text>
+            <View style={styles.scoreBarTrack}>
+              <View
+                style={[
+                  styles.scoreBarFill,
+                  { width: `${planAdherence.totalDays > 0 ? Math.round((planAdherence.completedDays / planAdherence.totalDays) * 100) : 0}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.meta}>{planAdherence.startDate} – {planAdherence.endDate} · {planAdherence.status}</Text>
+          </>
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Recent check-ins</Text>
+        {recentCheckins.length === 0 ? (
+          <Text style={styles.empty}>No check-ins yet.</Text>
+        ) : (
+          recentCheckins.map((c) => (
+            <View key={c.checkin_date} style={styles.historyRow}>
+              <Text style={styles.historyDate}>{new Date(`${c.checkin_date}T00:00:00Z`).toLocaleDateString(undefined, { timeZone: 'UTC' })}</Text>
+              <Text style={styles.checkinNotes}>{c.notes || 'nothing sore reported'}</Text>
+            </View>
+          ))
         )}
       </View>
 
@@ -155,4 +221,16 @@ const styles = StyleSheet.create({
   trendTextDown: { color: theme.colors.danger },
   assessmentText: { color: theme.colors.text, lineHeight: 20 },
   testDate: { color: theme.colors.textMuted, fontSize: 12, marginTop: theme.spacing(1) },
+  scoresBlock: { marginTop: theme.spacing(2), borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing(1.5) },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1.5), paddingVertical: theme.spacing(0.5) },
+  scoreLabel: { color: theme.colors.text, fontSize: 12, textTransform: 'capitalize', width: 110 },
+  scoreBarTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: theme.colors.border, overflow: 'hidden', marginVertical: theme.spacing(1) },
+  scoreBarFill: { height: 6, borderRadius: 3, backgroundColor: theme.colors.primary },
+  scoreValue: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '600', width: 24, textAlign: 'right' },
+  historyBlock: { marginTop: theme.spacing(2), borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing(1.5) },
+  miniHeading: { color: theme.colors.textMuted, fontSize: 12, fontWeight: '600', marginBottom: theme.spacing(0.5) },
+  historyRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: theme.spacing(0.5) },
+  historyDate: { color: theme.colors.textMuted, fontSize: 12 },
+  historyTrend: { color: theme.colors.text, fontSize: 12, textTransform: 'capitalize' },
+  checkinNotes: { color: theme.colors.text, fontSize: 12, flex: 1, textAlign: 'right', marginLeft: theme.spacing(2) },
 });

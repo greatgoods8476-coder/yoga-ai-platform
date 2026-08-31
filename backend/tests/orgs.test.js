@@ -91,6 +91,69 @@ test('athlete detail: returns profile and latest generated routine, 404s for a n
   assert.equal(notFound.status, 404);
 });
 
+test('roster: flags athletes needing attention (injury, soreness, regressed trend, inactivity) and sorts them first', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const coach = await signupOnboarded(server.baseUrl, 'coach5');
+  const org = (await call(server.baseUrl, 'POST', '/orgs', { token: coach.token, body: { name: 'Eastview Athletics' } })).body.organization;
+
+  const fine = await signupOnboarded(server.baseUrl, 'athletefine', { sport: 'soccer' });
+  const flagged = await signupOnboarded(server.baseUrl, 'athleteflagged', { sport: 'soccer', current_injuries: ['sprained ankle'] });
+
+  for (const a of [fine, flagged]) {
+    const email = (await pool.query('SELECT email FROM users WHERE id = $1', [a.userId])).rows[0].email;
+    await call(server.baseUrl, 'POST', `/orgs/${org.id}/athletes`, { token: coach.token, body: { email } });
+  }
+
+  const roster = await call(server.baseUrl, 'GET', `/orgs/${org.id}/roster`, { token: coach.token });
+  assert.equal(roster.status, 200);
+
+  const fineRow = roster.body.roster.find((r) => r.user_id === fine.userId);
+  const flaggedRow = roster.body.roster.find((r) => r.user_id === flagged.userId);
+
+  // neither has completed a session yet, so both start flagged as inactive --
+  // the injury report is still a distinct reason on the flagged athlete
+  assert.equal(flaggedRow.needsAttention, true);
+  assert.ok(flaggedRow.attentionReasons.some((r) => r.includes('injury')));
+  assert.equal(fineRow.needsAttention, true);
+  assert.ok(fineRow.attentionReasons.some((r) => r.includes('no session')));
+
+  // needsAttention athletes sort before those without it
+  const firstFalseIndex = roster.body.roster.findIndex((r) => !r.needsAttention);
+  assert.ok(firstFalseIndex === -1 || !roster.body.roster.slice(0, firstFalseIndex).some((r) => !r.needsAttention));
+});
+
+test('athlete detail: includes mobility test history, recent check-ins, and plan adherence', async (t) => {
+  const server = await startTestServer();
+  t.after(() => server.close());
+
+  const coach = await signupOnboarded(server.baseUrl, 'coach6');
+  const org = (await call(server.baseUrl, 'POST', '/orgs', { token: coach.token, body: { name: 'Westbrook Athletics' } })).body.organization;
+
+  const athlete = await signupOnboarded(server.baseUrl, 'athlete4', { sport: 'basketball', available_days: ['monday', 'wednesday', 'friday'] });
+  const email = (await pool.query('SELECT email FROM users WHERE id = $1', [athlete.userId])).rows[0].email;
+  await call(server.baseUrl, 'POST', `/orgs/${org.id}/athletes`, { token: coach.token, body: { email } });
+
+  await pool.query(
+    `INSERT INTO mobility_tests (user_id, photos, assessment, flagged_limitations, scores) VALUES ($1, '[]', 'first test', '{}', $2)`,
+    [athlete.userId, JSON.stringify({ strength: 60 })]
+  );
+  await call(server.baseUrl, 'POST', '/plans/checkins', { token: athlete.token, body: { sorenessText: 'hamstrings a bit tight' } });
+  await call(server.baseUrl, 'POST', '/plans/generate', { token: athlete.token });
+
+  const detail = await call(server.baseUrl, 'GET', `/orgs/${org.id}/athletes/${athlete.userId}`, { token: coach.token });
+  assert.equal(detail.status, 200);
+  assert.equal(detail.body.mobilityTestHistory.length, 1);
+  assert.equal(detail.body.mobilityTestHistory[0].assessment, 'first test');
+  assert.equal(detail.body.recentCheckins.length, 1);
+  assert.equal(detail.body.recentCheckins[0].notes, 'hamstrings a bit tight');
+  assert.ok(detail.body.planAdherence);
+  assert.equal(detail.body.planAdherence.status, 'active');
+  assert.equal(detail.body.planAdherence.completedDays, 0);
+  assert.ok(detail.body.planAdherence.totalDays > 0);
+});
+
 test('POST /orgs/:id/athletes rejects an unknown email and a non-coach caller', async (t) => {
   const server = await startTestServer();
   t.after(() => server.close());
