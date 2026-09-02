@@ -1,0 +1,8 @@
+node_modules/
+.env
+.expo/
+dist/
+*.log
+
+# Local working log of queued fixes -- not part of the product, never pushed
+PENDING_FIXES.md
