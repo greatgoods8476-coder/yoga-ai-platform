@@ -288,7 +288,7 @@ export type DailyCheckin = {
   notes: string | null;
 };
 
-export type MobilityTestPose = { key: string; label: string; instructions: string };
+export type MobilityTestPose = { key: string; label: string; instructions: string; cameraSetup: string };
 export type MobilityPhoto = { poseKey: string; mediaType: 'image/jpeg' | 'image/png'; data: string };
 export type MobilityScores = {
   strength?: number;

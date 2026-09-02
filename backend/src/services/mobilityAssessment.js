@@ -11,26 +11,46 @@ const { generateVisionText, isAvailable } = require('./llmClient');
 // Five recorded movements covering foot/ankle, knee, hip, shoulder, and
 // overall movement quality/balance -- grouped from a longer list of
 // individual test points so an athlete records 5 short clips, not 12.
+//
+// cameraSetup matters as much as the movement itself: BIOMECHANICS_CHECKLIST
+// below asks the model for specific findings (knee valgus, hip drop,
+// scapular winging) that are only visible from the right plane. A front
+// (frontal-plane) view catches side-to-side asymmetry -- valgus/varus, hip
+// drop, shoulder symmetry -- while a side (sagittal-plane) view catches
+// depth/compensation front-on framing hides -- squat depth, trunk lean, hip
+// flexor length, lumbar arch. Getting the wrong angle for a given movement
+// means the frames simply don't contain the thing being assessed, no matter
+// how good the model is.
 const MOBILITY_TEST_POSES = [
   {
     key: 'foot_ankle', label: 'Foot & Ankle Control',
     instructions: 'Rise onto your toes and lower slowly 3 times, then balance on one foot for 5 seconds and switch sides.',
+    cameraSetup: 'Front-facing, full body in frame (head to feet). Prop the phone upright about 6-8 ft away at roughly hip height -- '
+      + 'this angle catches hip drop during the single-leg balance, not just the feet.',
   },
   {
     key: 'knee_squat', label: 'Knee Movement & Strength',
     instructions: 'Perform 3 slow bodyweight squats, then a few slow step-downs from a low step or curb on each leg if you have one available.',
+    cameraSetup: 'Front-facing, full body in frame. Prop the phone upright about 6-8 ft away at knee-to-hip height -- '
+      + 'this is the angle that actually shows knees caving in or tracking outside the toes.',
   },
   {
     key: 'hip_mobility', label: 'Hip Mobility & Stability',
     instructions: 'Perform a few hip circles in each direction, then hold a deep lunge stretch on each side.',
+    cameraSetup: 'From the SIDE this time (turn your whole body 90°, not just the phone) -- prop it about 6-8 ft away at hip height. '
+      + 'A side view is what shows lunge depth and any lower-back arch compensating for tight hip flexors; a front view hides both.',
   },
   {
     key: 'shoulder_mobility', label: 'Shoulder Mobility & Strength',
     instructions: 'Raise both arms in a full circle overhead 3 times, then hold your arms straight out to the sides for a few seconds.',
+    cameraSetup: 'Front-facing, framed from the waist up. Prop the phone about 5-6 ft away at chest height -- '
+      + 'centered and level so left/right overhead reach and any shoulder-shrug compensation are actually comparable.',
   },
   {
     key: 'movement_quality', label: 'Overall Movement & Balance',
     instructions: 'Jog in place for a few seconds, change direction quickly a couple of times, then finish with a brief single-leg balance. Feel free to include a movement common in your sport.',
+    cameraSetup: 'Front-facing, but back up further this time (10+ ft, or use a bigger space) -- you\'ll be moving side to side, '
+      + 'so leave enough width in frame that you don\'t step out of shot during the direction changes.',
   },
 ];
 

@@ -195,6 +195,10 @@ export default function MobilityTestScreen({
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{currentPose.label}</Text>
           <Text style={styles.subtitle}>{currentPose.instructions}</Text>
+          <View style={styles.cameraSetupBox}>
+            <Text style={styles.cameraSetupLabel}>📷 Camera setup</Text>
+            <Text style={styles.cameraSetupText}>{currentPose.cameraSetup}</Text>
+          </View>
           <Pressable style={styles.button} onPress={recordCurrentPose} disabled={processing}>
             {processing ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Record</Text>}
           </Pressable>
@@ -238,6 +242,12 @@ const styles = StyleSheet.create({
     padding: theme.spacing(2.5), marginBottom: theme.spacing(2.5),
   },
   cardTitle: { fontSize: 17, fontWeight: '600', color: theme.colors.text, marginBottom: theme.spacing(1) },
+  cameraSetupBox: {
+    backgroundColor: theme.colors.accent, borderRadius: theme.radius,
+    padding: theme.spacing(1.5), marginBottom: theme.spacing(2),
+  },
+  cameraSetupLabel: { color: theme.colors.primaryDark, fontWeight: '700', fontSize: 12, marginBottom: theme.spacing(0.5) },
+  cameraSetupText: { color: theme.colors.primaryDark, fontSize: 13, lineHeight: 18 },
   assessmentText: { color: theme.colors.text, lineHeight: 22 },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing(1), marginTop: theme.spacing(1), marginBottom: theme.spacing(1.5) },
   flagChip: { backgroundColor: theme.colors.accent, borderRadius: theme.radius, paddingHorizontal: theme.spacing(1.5), paddingVertical: theme.spacing(0.75) },

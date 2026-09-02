@@ -14,7 +14,7 @@ test('GET /mobility/test-poses lists the fixed stretch-test poses', async (t) =>
   const res = await call(server.baseUrl, 'GET', '/mobility/test-poses', { token: athlete.token });
   assert.equal(res.status, 200);
   assert.ok(res.body.poses.length >= 3);
-  assert.ok(res.body.poses.every((p) => p.key && p.label && p.instructions));
+  assert.ok(res.body.poses.every((p) => p.key && p.label && p.instructions && p.cameraSetup));
 });
 
 test('POST /mobility/tests reports unavailable when no LLM is configured (test env has no ANTHROPIC_API_KEY)', async (t) => {
