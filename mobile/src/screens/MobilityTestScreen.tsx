@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as VideoThumbnails from 'expo-video-thumbnails';
-import * as ImageManipulator from 'expo-image-manipulator';
 import { api, ApiError, MobilityPhoto, MobilityTest, MobilityTestPose, MobilityTestSubmitResult } from '../api/client';
+import { extractVideoFrames } from '../utils/extractVideoFrames';
 import { theme } from '../theme';
 
 const TREND_LABEL: Record<string, string> = { improved: 'Improved since last time', same: 'Holding steady', regressed: 'Slipped since last time' };
@@ -71,16 +70,8 @@ export default function MobilityTestScreen({
     setError(null);
     try {
       const videoUri = picked.assets[0].uri;
-      const newFrames: MobilityPhoto[] = [];
-      for (const time of FRAME_TIMES_MS) {
-        const thumb = await VideoThumbnails.getThumbnailAsync(videoUri, { time, quality: 0.6 });
-        const compressed = await ImageManipulator.manipulateAsync(
-          thumb.uri,
-          [{ resize: { width: 800 } }],
-          { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-        );
-        if (compressed.base64) newFrames.push({ poseKey: currentPose.key, mediaType: 'image/jpeg', data: compressed.base64 });
-      }
+      const base64Frames = await extractVideoFrames(videoUri, FRAME_TIMES_MS);
+      const newFrames: MobilityPhoto[] = base64Frames.map((data) => ({ poseKey: currentPose.key, mediaType: 'image/jpeg', data }));
       setFrames((prev) => [...prev.filter((f) => f.poseKey !== currentPose.key), ...newFrames]);
       if (poses && poseIndex + 1 < poses.length) setPoseIndex(poseIndex + 1);
     } catch (e) {
